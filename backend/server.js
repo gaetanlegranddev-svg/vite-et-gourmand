@@ -7,7 +7,7 @@ import dotenv from 'dotenv';
 import pkg from 'pg';
 import mongoose from 'mongoose';
 
-dotenv.config();
+dotenv.config({ path: './backend/.env' });
 
 const app = express();
 const { Pool } = pkg;

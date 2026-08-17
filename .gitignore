@@ -1,1 +1,3 @@
-# Dépendances\nnode_modules/\n\n# Variables d'environnement\n.env\n.env.*\n\n# Fichiers de build\ndist/\nbuild/\n\n# Logs\n*.log\nnpm-debug.log*\npnpm-debug.log*\n\n# Système\n.DS_Store\nThumbs.db\n\n# Éditeur\n.vscode/\n.idea/
+node_modules/
+.env
+dist/
