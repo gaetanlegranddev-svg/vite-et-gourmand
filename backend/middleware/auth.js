@@ -28,3 +28,7 @@ export const verifierRole = (...roles) => {
     next();
   };
 };
+
+// ── Aliases pour compatibilité ───────────────
+export const authenticate = verifierToken;
+export const authorize = verifierRole;

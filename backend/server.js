@@ -5,8 +5,12 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
-import authRoutes from './routes/auth.js';
 import { pool } from './db.js';
+
+import authRoutes from './routes/auth.js';
+import menuRoutes from './routes/menuRoutes.js';
+import orderRoutes from './routes/orderRoutes.js';
+import hourRoutes from './routes/hourRoutes.js';
 
 dotenv.config({ path: './backend/.env' });
 
@@ -24,6 +28,9 @@ app.get('/', (req, res) => {
 });
 
 app.use('/api/auth', authRoutes);
+app.use('/api/menus', menuRoutes);
+app.use('/api/orders', orderRoutes);
+app.use('/api/hours', hourRoutes);
 
 app.use((err, req, res, next) => {
   console.error('❌ Erreur serveur :', err);
