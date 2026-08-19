@@ -1,19 +1,22 @@
 // ============================================
-// Routes d'authentification
+// Vite & Gourmand — Auth Routes
 // ============================================
 import express from 'express';
-import { inscription, connexion, profil } from '../controllers/authController.js';
-import { verifierToken } from '../middleware/auth.js';
+import { register, login, getProfile, updateProfile } from '../controllers/authController.js';
+import { authenticate } from '../middleware/auth.js';
 
 const router = express.Router();
 
-// POST /api/auth/inscription
-router.post('/inscription', inscription);
+// POST /api/auth/register
+router.post('/register', register);
 
-// POST /api/auth/connexion
-router.post('/connexion', connexion);
+// POST /api/auth/login
+router.post('/login', login);
 
-// GET /api/auth/profil (protégée)
-router.get('/profil', verifierToken, profil);
+// GET /api/auth/profile (protected)
+router.get('/profile', authenticate, getProfile);
+
+// PUT /api/auth/profile (protected)
+router.put('/profile', authenticate, updateProfile);
 
 export default router;
