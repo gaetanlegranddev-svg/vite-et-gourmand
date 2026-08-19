@@ -1,17 +1,18 @@
-// ============================================
-// Vite & Gourmand — PostgreSQL Connection
-// ============================================
-import pkg from 'pg';
-import dotenv from 'dotenv';
-
-dotenv.config({ path: './backend/.env' });
-
+import pkg from "pg";
 const { Pool } = pkg;
 
+console.log("DB CONFIG:", {
+  host: "localhost",
+  port: 5432,
+  database: "vite_gourmand",
+  user: "postgres",
+  password: "Paris.123456*"
+});
+
 export const pool = new Pool({
-  host:     process.env.PG_HOST,
-  port:     Number(process.env.PG_PORT),
-  database: process.env.PG_DATABASE,
-  user:     process.env.PG_USER,
-  password: String(process.env.PG_PASSWORD),
+  host:     "localhost",
+  port:     5432,
+  database: "vite_gourmand",
+  user:     "postgres",
+  password: "Paris.123456*",
 });
