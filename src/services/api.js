@@ -2,7 +2,7 @@
 // Vite & Gourmand — API Base Configuration
 // ============================================
 
-const API_URL = 'http://localhost:3000/api';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 // Get token from localStorage
 const getToken = () => localStorage.getItem('token');
