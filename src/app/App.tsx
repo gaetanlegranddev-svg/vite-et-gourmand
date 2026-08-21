@@ -13,7 +13,8 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ResponsiveContainer, PieChart, Pie, Cell,
 } from "recharts";
-
+import { getMenus, getDishes } from '../services/menuService.js';
+import { useAuth } from '../context/AuthContext.jsx';
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 type View = "home" | "menus" | "menu-detail" | "admin" | "contact" | "order" | "user-space";
@@ -133,7 +134,7 @@ const INIT_ORDERS: Order[] = [
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
-const fmt = (p: number) => p.toFixed(2).replace(".", ",") + " €";
+const fmt = (p: number) => Number(p).toFixed(2).replace(".", ",") + " €";
 const uid = () => "x" + Math.random().toString(36).slice(2, 8);
 const fmtDate = (iso: string) => { try { return new Date(iso).toLocaleDateString("fr-FR",{day:"2-digit",month:"long",year:"numeric"}); } catch { return iso; } };
 const fmtDateShort = (iso: string) => { try { return new Date(iso).toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric"}); } catch { return iso; } };
@@ -232,7 +233,8 @@ function PasswordStrengthBar({ pw }: { pw: string }) {
 
 function ImageGallery({ images, title }: { images: string[]; title: string }) {
   const [idx, setIdx] = useState(0);
-  if (!images.length) return <div className="w-full h-72 bg-muted flex items-center justify-center text-muted-foreground" role="img" aria-label="Aucune image disponible"><ImageIcon size={32} aria-hidden="true"/></div>;
+  if (!images || !images.length) images = ['https://images.unsplash.com/photo-1688437307658-23a1039d9634?w=800&h=560&fit=crop&auto=format'];
+if (!images.length) return <div className="w-full h-72 bg-muted flex items-center justify-center text-muted-foreground" role="img" aria-label="Aucune image disponible"><ImageIcon size={32} aria-hidden="true"/></div>;
   return (
     <div className="relative overflow-hidden bg-muted" role="region" aria-label={`Galerie photos — ${title}`}>
       <img src={images[idx]} alt={`${title} — photo ${idx+1} sur ${images.length}`} className="w-full h-72 md:h-96 object-cover"/>
@@ -373,7 +375,7 @@ function CartDrawer({ cart, onClose, onInc, onDec }: { cart:CartItem[]; onClose:
         <div className="flex items-center justify-between px-6 py-5 border-b border-border flex-shrink-0"><h2 className="text-xl font-semibold" style={{fontFamily:"'Playfair Display',serif"}}>Votre panier</h2><button onClick={onClose} aria-label="Fermer le panier" className="text-muted-foreground hover:text-foreground"><X size={20} aria-hidden="true"/></button></div>
         {cart.length===0 ? <div className="flex-1 flex flex-col items-center justify-center gap-3 text-muted-foreground px-6"><ShoppingCart size={40} strokeWidth={1} aria-hidden="true"/><p className="text-sm">Votre panier est vide.</p></div> : (
           <>
-            <ul className="flex-1 overflow-y-auto divide-y divide-border px-6" aria-label="Articles dans le panier">{cart.map(({menu,qty})=><li key={menu.id} className="py-4 flex items-start gap-4"><img src={menu.images[0]} alt="" className="w-14 h-14 object-cover flex-shrink-0 bg-muted" aria-hidden="true"/><div className="flex-1 min-w-0"><p className="font-medium text-sm" style={{fontFamily:"'Playfair Display',serif"}}>{menu.title}</p><p className="text-xs text-muted-foreground mt-0.5">{fmt(menu.price)} · {menu.minPeople} pers. min</p><div className="flex items-center gap-2 mt-2" role="group" aria-label={`Quantité pour ${menu.title}`}><button onClick={()=>onDec(menu.id)} aria-label="Retirer un exemplaire" className="w-6 h-6 border border-border flex items-center justify-center hover:bg-secondary"><Minus size={12} aria-hidden="true"/></button><span className="text-sm w-4 text-center" aria-live="polite">{qty}</span><button onClick={()=>onInc(menu.id)} aria-label="Ajouter un exemplaire" className="w-6 h-6 border border-border flex items-center justify-center hover:bg-secondary"><Plus size={12} aria-hidden="true"/></button></div></div><p className="text-sm font-semibold text-primary flex-shrink-0" style={{fontFamily:"'Playfair Display',serif"}}>{fmt(menu.price*qty)}</p></li>)}</ul>
+            <ul className="flex-1 overflow-y-auto divide-y divide-border px-6" aria-label="Articles dans le panier">{cart.map(({menu,qty})=><li key={menu.id} className="py-4 flex items-start gap-4"><img src={(menu.images?.[0] || 'https://images.unsplash.com/photo-1688437307658-23a1039d9634?w=800&h=560&fit=crop&auto=format')} alt="" className="w-14 h-14 object-cover flex-shrink-0 bg-muted" aria-hidden="true"/><div className="flex-1 min-w-0"><p className="font-medium text-sm" style={{fontFamily:"'Playfair Display',serif"}}>{menu.title}</p><p className="text-xs text-muted-foreground mt-0.5">{fmt(menu.price)} · {menu.minPeople} pers. min</p><div className="flex items-center gap-2 mt-2" role="group" aria-label={`Quantité pour ${menu.title}`}><button onClick={()=>onDec(menu.id)} aria-label="Retirer un exemplaire" className="w-6 h-6 border border-border flex items-center justify-center hover:bg-secondary"><Minus size={12} aria-hidden="true"/></button><span className="text-sm w-4 text-center" aria-live="polite">{qty}</span><button onClick={()=>onInc(menu.id)} aria-label="Ajouter un exemplaire" className="w-6 h-6 border border-border flex items-center justify-center hover:bg-secondary"><Plus size={12} aria-hidden="true"/></button></div></div><p className="text-sm font-semibold text-primary flex-shrink-0" style={{fontFamily:"'Playfair Display',serif"}}>{fmt(menu.price*qty)}</p></li>)}</ul>
             <div className="px-6 py-5 border-t border-border space-y-4 flex-shrink-0"><div className="flex justify-between text-base font-semibold" style={{fontFamily:"'Playfair Display',serif"}}><span>Total</span><span className="text-primary" aria-live="polite">{fmt(total)}</span></div>{done?<div role="status" className="text-center py-3 bg-secondary text-sm"><Check size={16} className="inline mr-2 text-accent" aria-hidden="true"/>Demande reçue — nous vous recontactons sous 24 h.</div>:<button onClick={()=>setDone(true)} className="w-full py-3 bg-primary text-primary-foreground text-sm tracking-wide hover:opacity-90">Confirmer</button>}</div>
           </>
         )}
@@ -504,12 +506,12 @@ function AllMenusView({ menus, dishes, onDetail }: { menus:MenuData[]; dishes:Di
       ) : (
         <ul className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 list-none">
           {filtered.map(m=>{
-            const md=dishes.filter(d=>m.dishIds.includes(d.id));
+            const md=dishes.filter(d=>(m.dishIds || []).includes(d.id));
             const allergens=[...new Set(md.flatMap(d=>d.allergens))];
             return (
               <li key={m.id}>
                 <article className="bg-card border border-border flex flex-col group hover:shadow-md transition-shadow h-full">
-                  <div className="relative overflow-hidden h-48 bg-muted"><button onClick={()=>onDetail(m.id)} className="w-full h-full" aria-label={`Voir le détail du menu ${m.title}`}><img src={m.images[0]} alt={m.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"/></button><div className="absolute top-3 left-3 flex gap-1.5 flex-wrap" aria-hidden="true"><ThemeBadge theme={m.theme}/><RegimeBadge regime={m.regime}/></div>{m.images.length>1 && <span className="absolute bottom-2 right-2 text-[10px] bg-background/80 px-1.5 py-0.5" aria-hidden="true">{m.images.length} photos</span>}</div>
+                  <div className="relative overflow-hidden h-48 bg-muted"><button onClick={()=>onDetail(m.id)} className="w-full h-full" aria-label={`Voir le détail du menu ${m.title}`}><img src={(m.images?.[0]) || 'https://images.unsplash.com/photo-1688437307658-23a1039d9634?w=800&h=560&fit=crop&auto=format'} alt={m.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"/></button><div className="absolute top-3 left-3 flex gap-1.5 flex-wrap" aria-hidden="true"><ThemeBadge theme={m.theme}/><RegimeBadge regime={m.regime}/></div>{m.images && m.images.length>1 && <span className="absolute bottom-2 right-2 text-[10px] bg-background/80 px-1.5 py-0.5" aria-hidden="true">{m.images.length} photos</span>}</div>
                   <div className="flex flex-col flex-1 p-5 gap-4">
                     <div><h2 className="text-lg font-semibold leading-snug" style={{fontFamily:"'Playfair Display',serif"}}>{m.title}</h2><p className="text-sm text-muted-foreground mt-2 leading-relaxed line-clamp-3">{m.description}</p></div>
                     <div className="flex gap-5 text-sm border-y border-border py-3"><div><p className="text-[10px] text-muted-foreground uppercase tracking-wider">Pers. min.</p><p className="font-semibold mt-0.5 flex items-center gap-1"><UtensilsCrossed size={13} className="text-muted-foreground" aria-hidden="true"/>{m.minPeople}</p></div><div><p className="text-[10px] text-muted-foreground uppercase tracking-wider">Prix</p><p className="font-semibold text-primary mt-0.5" style={{fontFamily:"'Playfair Display',serif"}}>{fmt(m.price)}</p></div><div className="ml-auto self-center"><StockIndicator stock={m.stock}/></div></div>
@@ -529,7 +531,7 @@ function AllMenusView({ menus, dishes, onDetail }: { menus:MenuData[]; dishes:Di
 // ── Menu Detail ────────────────────────────────────────────────────────────────
 
 function MenuDetailView({ menu, dishes, user, onBack, onOrder, onAuth }: { menu:MenuData; dishes:Dish[]; user:AuthUser|null; onBack:()=>void; onOrder:()=>void; onAuth:()=>void }) {
-  const md=dishes.filter(d=>menu.dishIds.includes(d.id));
+  const md=dishes.filter(d=>(menu.dishIds || []).includes(d.id));
   const byType=(t:DishType)=>md.filter(d=>d.type===t);
   const allergens=[...new Set(md.flatMap(d=>d.allergens))];
   return (
@@ -591,7 +593,7 @@ function OrderView({ menu, user, onBack, onConfirm }: { menu:MenuData; user:Auth
 
   function handleConfirm(e:React.FormEvent){
     e.preventDefault(); if(!agreed)return;
-    const order:Order={ id:uid(),userEmail:user.email,menuId:menu.id,menuTitle:menu.title,menuImage:menu.images[0],menuMinPeople:menu.minPeople,firstName:s1.firstName,lastName:s1.lastName,email:s1.email,phone:s1.phone,eventDate:s1.eventDate,deliveryTime:s1.deliveryTime,address:s1.address,city:s1.city,inBordeaux:s1.inBordeaux,distanceKm:+s1.distanceKm||0,people,menuSubtotal:menuSub,deliveryFee:delivFee,discount,total,notes:s1.notes,statusHistory:[{status:"en attente",at:new Date().toISOString()}],currentStatus:"en attente" };
+    const order:Order={ id:uid(),userEmail:user.email,menuId:menu.id,menuTitle:menu.title,menuImage:(menu.images?.[0] || 'https://images.unsplash.com/photo-1688437307658-23a1039d9634?w=800&h=560&fit=crop&auto=format'),menuMinPeople:menu.minPeople,firstName:s1.firstName,lastName:s1.lastName,email:s1.email,phone:s1.phone,eventDate:s1.eventDate,deliveryTime:s1.deliveryTime,address:s1.address,city:s1.city,inBordeaux:s1.inBordeaux,distanceKm:+s1.distanceKm||0,people,menuSubtotal:menuSub,deliveryFee:delivFee,discount,total,notes:s1.notes,statusHistory:[{status:"en attente",at:new Date().toISOString()}],currentStatus:"en attente" };
     onConfirm(order); setConfirmed(true);
   }
 
@@ -641,7 +643,7 @@ function OrderView({ menu, user, onBack, onConfirm }: { menu:MenuData; user:Auth
       {step===2 && (
         <div className="space-y-6">
           <h2 className="text-lg font-semibold" style={{fontFamily:"'Playfair Display',serif"}}>Votre menu &amp; nombre de personnes</h2>
-          <div className="bg-card border border-border p-5 flex gap-4"><img src={menu.images[0]} alt="" className="w-20 h-20 object-cover flex-shrink-0 bg-muted" aria-hidden="true"/><div><p className="text-xs tracking-widest uppercase text-muted-foreground mb-1">Menu sélectionné</p><h3 className="font-semibold text-lg" style={{fontFamily:"'Playfair Display',serif"}}>{menu.title}</h3><p className="text-sm text-muted-foreground mt-1">{fmt(menu.price)} pour {menu.minPeople} personnes</p></div></div>
+          <div className="bg-card border border-border p-5 flex gap-4"><img src={(menu.images?.[0] || 'https://images.unsplash.com/photo-1688437307658-23a1039d9634?w=800&h=560&fit=crop&auto=format')} alt="" className="w-20 h-20 object-cover flex-shrink-0 bg-muted" aria-hidden="true"/><div><p className="text-xs tracking-widest uppercase text-muted-foreground mb-1">Menu sélectionné</p><h3 className="font-semibold text-lg" style={{fontFamily:"'Playfair Display',serif"}}>{menu.title}</h3><p className="text-sm text-muted-foreground mt-1">{fmt(menu.price)} pour {menu.minPeople} personnes</p></div></div>
           <div className="flex flex-col gap-2"><label className="text-xs tracking-widest uppercase text-muted-foreground" id="people-label">Nombre de personnes *</label><div className="flex items-center gap-4" role="group" aria-labelledby="people-label"><button type="button" onClick={()=>setPeople(p=>Math.max(menu.minPeople,p-1))} aria-label="Retirer une personne" className="w-10 h-10 border border-border flex items-center justify-center hover:bg-secondary"><Minus size={16} aria-hidden="true"/></button><span className="text-3xl font-semibold w-12 text-center" aria-live="polite" aria-atomic="true" style={{fontFamily:"'Playfair Display',serif"}}>{people}</span><button type="button" onClick={()=>setPeople(p=>p+1)} aria-label="Ajouter une personne" className="w-10 h-10 border border-border flex items-center justify-center hover:bg-secondary"><Plus size={16} aria-hidden="true"/></button></div><p className="text-xs text-muted-foreground">Minimum : {menu.minPeople} personnes</p>{hasDiscount&&<p className="text-sm text-emerald-700 font-medium flex items-center gap-1.5" role="status"><CircleCheck size={14} aria-hidden="true"/>Remise de 10 % appliquée !</p>}</div>
           <div className="bg-secondary border border-border p-5 space-y-2" aria-live="polite" aria-atomic="true">
             <p className="text-xs tracking-widest uppercase text-muted-foreground mb-3">Estimation en temps réel</p>
@@ -1148,7 +1150,7 @@ function AdminPanel({ menus, dishes, orders, hours, user, setMenus, setDishes, s
 
       {/* PLATS */}
       {tab==="plats"&&!(nd||ed)&&(<><div className="flex justify-end mb-5"><button onClick={()=>{ setDf(EDISH); setNd(true); setEd(null); }} className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground text-sm hover:opacity-90"><Plus size={14} aria-hidden="true"/>Nouveau plat</button></div>
-        <div className="border border-border overflow-x-auto"><table className="w-full text-sm min-w-[480px]"><caption className="sr-only">Liste des plats</caption><thead className="bg-secondary text-xs uppercase tracking-widest text-muted-foreground"><tr><th className="text-left px-4 py-3" scope="col">Nom</th><th className="text-left px-4 py-3" scope="col">Type</th><th className="text-left px-4 py-3" scope="col">Allergènes</th><th className="text-left px-4 py-3" scope="col">Menus</th><th className="px-4 py-3" scope="col"><span className="sr-only">Actions</span></th></tr></thead><tbody className="divide-y divide-border">{dishes.map(d=><tr key={d.id} className="hover:bg-secondary/50"><td className="px-4 py-3 font-medium">{d.name}</td><td className="px-4 py-3 capitalize text-muted-foreground">{d.type}</td><td className="px-4 py-3 text-xs text-muted-foreground">{d.allergens.length?d.allergens.join(", "):"—"}</td><td className="px-4 py-3 text-xs text-muted-foreground">{menus.filter(m=>m.dishIds.includes(d.id)).length} menu{menus.filter(m=>m.dishIds.includes(d.id)).length>1?"s":""}</td><td className="px-4 py-3"><div className="flex items-center gap-2 justify-end"><button onClick={()=>{ setDf({...d}); setEd(d); setNd(false); }} aria-label={`Modifier ${d.name}`} className="text-muted-foreground hover:text-foreground"><Edit2 size={14} aria-hidden="true"/></button>{isAdmin&&<button onClick={()=>setDishes(p=>p.filter(x=>x.id!==d.id))} aria-label={`Supprimer ${d.name}`} className="text-muted-foreground hover:text-red-600"><Trash2 size={14} aria-hidden="true"/></button>}</div></td></tr>)}</tbody></table></div></>)}
+        <div className="border border-border overflow-x-auto"><table className="w-full text-sm min-w-[480px]"><caption className="sr-only">Liste des plats</caption><thead className="bg-secondary text-xs uppercase tracking-widest text-muted-foreground"><tr><th className="text-left px-4 py-3" scope="col">Nom</th><th className="text-left px-4 py-3" scope="col">Type</th><th className="text-left px-4 py-3" scope="col">Allergènes</th><th className="text-left px-4 py-3" scope="col">Menus</th><th className="px-4 py-3" scope="col"><span className="sr-only">Actions</span></th></tr></thead><tbody className="divide-y divide-border">{dishes.map(d=><tr key={d.id} className="hover:bg-secondary/50"><td className="px-4 py-3 font-medium">{d.name}</td><td className="px-4 py-3 capitalize text-muted-foreground">{d.type}</td><td className="px-4 py-3 text-xs text-muted-foreground">{d.allergens.length?d.allergens.join(", "):"—"}</td><td className="px-4 py-3 text-xs text-muted-foreground">{menus.filter(m=>(m.dishIds || []).includes(d.id)).length} menu{menus.filter(m=>(m.dishIds || []).includes(d.id)).length>1?"s":""}</td><td className="px-4 py-3"><div className="flex items-center gap-2 justify-end"><button onClick={()=>{ setDf({...d}); setEd(d); setNd(false); }} aria-label={`Modifier ${d.name}`} className="text-muted-foreground hover:text-foreground"><Edit2 size={14} aria-hidden="true"/></button>{isAdmin&&<button onClick={()=>setDishes(p=>p.filter(x=>x.id!==d.id))} aria-label={`Supprimer ${d.name}`} className="text-muted-foreground hover:text-red-600"><Trash2 size={14} aria-hidden="true"/></button>}</div></td></tr>)}</tbody></table></div></>)}
       {tab==="plats"&&(nd||ed)&&(
         <div className="bg-card border border-border p-6 space-y-5 max-w-lg">
           <div className="flex items-center justify-between"><h2 className="text-lg font-semibold" style={{fontFamily:"'Playfair Display',serif"}}>{nd?"Nouveau plat":"Modifier"}</h2><button onClick={()=>{ setNd(false); setEd(null); }} aria-label="Fermer"><X size={18} aria-hidden="true"/></button></div>
@@ -1277,6 +1279,20 @@ export default function App() {
   const [ordMenuId,setOrdMenuId]=useState<string|null>(null);
   const [menus,setMenus]=useState<MenuData[]>(INIT_MENUS);
   const [dishes,setDishes]=useState<Dish[]>(INIT_DISHES);
+  // Load real data from API
+// Load real data from API
+useEffect(() => {
+  getMenus().then(data => {
+    if (data.menus && data.menus.length > 0) {
+      // Merge API data with static data to keep dishIds
+      const enriched = data.menus.map((apiMenu: any) => {
+        const staticMenu = INIT_MENUS.find(m => m.title === apiMenu.title);
+        return staticMenu ? { ...staticMenu, ...apiMenu } : apiMenu;
+      });
+      setMenus(enriched);
+    }
+  }).catch(console.error);
+}, []);
   const [orders,setOrders]=useState<Order[]>(INIT_ORDERS);
   const [hours,setHours]=useState<HourSlot[]>(HOURS_INIT);
   const [cart,setCart]=useState<CartItem[]>([]);
@@ -1362,10 +1378,10 @@ export default function App() {
               <div className="max-w-6xl mx-auto px-6">
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-12"><div><p className="text-xs tracking-widest uppercase text-accent mb-2" aria-hidden="true">Saison en cours</p><h2 id="featured-heading" className="text-4xl font-semibold" style={{fontFamily:"'Playfair Display',serif"}}>Nos menus du moment</h2></div><button onClick={()=>nav("menus")} className="text-sm text-primary hover:underline underline-offset-4 flex items-center gap-1 self-start md:self-auto">Voir tous les menus <CR size={14} aria-hidden="true"/></button></div>
                 <ul className="grid sm:grid-cols-3 gap-6 list-none">
-                  {featured.map(m=>{ const md=dishes.filter(d=>m.dishIds.includes(d.id)); const al=[...new Set(md.flatMap(d=>d.allergens))]; return (
+                  {featured.map(m=>{ const md=dishes.filter(d=>(m.dishIds || []).includes(d.id)); const al=[...new Set(md.flatMap(d=>d.allergens))]; return (
                     <li key={m.id}>
                       <article className="bg-card border border-border flex flex-col group hover:shadow-md transition-shadow h-full">
-                        <div className="relative overflow-hidden h-44 bg-muted"><button onClick={()=>{ setSelId(m.id); nav("menu-detail"); }} className="w-full h-full" aria-label={`Voir le détail du menu ${m.title}`}><img src={m.images[0]} alt={m.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"/></button><div className="absolute top-3 left-3" aria-hidden="true"><ThemeBadge theme={m.theme}/></div></div>
+                        <div className="relative overflow-hidden h-44 bg-muted"><button onClick={()=>{ setSelId(m.id); nav("menu-detail"); }} className="w-full h-full" aria-label={`Voir le détail du menu ${m.title}`}><img src={(m.images && (m.images && (m.images && m.images[0]) || 'https://images.unsplash.com/photo-1688437307658-23a1039d9634?w=800&h=560&fit=crop&auto=format') || 'https://images.unsplash.com/photo-1688437307658-23a1039d9634?w=800&h=560&fit=crop&auto=format') || 'https://images.unsplash.com/photo-1688437307658-23a1039d9634?w=800&h=560&fit=crop&auto=format'} alt={m.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"/></button><div className="absolute top-3 left-3" aria-hidden="true"><ThemeBadge theme={m.theme}/></div></div>
                         <div className="flex flex-col flex-1 p-5 gap-3"><div><h3 className="text-base font-semibold leading-snug" style={{fontFamily:"'Playfair Display',serif"}}>{m.title}</h3><p className="text-xs text-muted-foreground mt-1.5 line-clamp-2 leading-relaxed">{m.description}</p></div><div className="flex justify-between text-sm border-t border-border pt-3 mt-auto"><span className="text-muted-foreground flex items-center gap-1"><UtensilsCrossed size={12} aria-hidden="true"/>{m.minPeople} pers. min</span><span className="font-semibold text-primary" style={{fontFamily:"'Playfair Display',serif"}}>{fmt(m.price)}</span></div>{al.length>0&&<p className="text-[11px] text-amber-600 flex items-center gap-1"><AlertTriangle size={10} aria-hidden="true"/><span><span className="sr-only">Allergènes : </span>{al.slice(0,3).join(", ")}{al.length>3?"…":""}</span></p>}<button onClick={()=>{ setSelId(m.id); nav("menu-detail"); }} className="w-full py-2 border border-primary text-primary text-xs hover:bg-primary hover:text-primary-foreground transition-colors">Voir le détail</button></div>
                       </article>
                     </li>
