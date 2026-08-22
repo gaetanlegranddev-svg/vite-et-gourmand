@@ -15,6 +15,7 @@ import {
 } from "recharts";
 import { getMenus, getDishes } from '../services/menuService.js';
 import { useAuth } from '../context/AuthContext.jsx';
+import { createOrder } from '../services/orderService.js';
 import { login, register } from '../services/authService.js';
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -264,45 +265,31 @@ function AuthModal({ onClose, onLogin, initialTab="login" }: { onClose:()=>void;
   const trapRef = useFocusTrap(true);
   const ic = "w-full bg-input-background border border-border px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring";
 
-  async function handleLogin(e: React.FormEvent) {
-  e.preventDefault();
-  try {
-    const data = await login(email, pw);
-    onLogin({ 
-      name: `${data.user.firstName} ${data.user.lastName}`, 
-      email: data.user.email, 
-      role: data.user.role 
-    });
+  function handleLogin(e: React.FormEvent) {
+    e.preventDefault();
+    const disabled = getDisabledEmails();
+    const found = allUsers().find(u => u.email.toLowerCase()===email.toLowerCase() && u.password===pw);
+    if (!found) { setLoginErr("Identifiants incorrects."); return; }
+    if (disabled.includes(found.email)) { setLoginErr("Ce compte a été désactivé. Contactez l'administrateur."); return; }
+    onLogin({ name:`${found.firstName} ${found.lastName}`, email:found.email, role:found.role, address:found.address, phone:found.phone });
     onClose();
-  } catch (err: any) {
-    setLoginErr(err.message || "Identifiants incorrects.");
   }
-}
-  async function handleRegister(e: React.FormEvent) {
-  e.preventDefault();
-  const errs: string[] = [];
-  if (!reg.firstName.trim()) errs.push("Prénom requis");
-  if (!reg.lastName.trim()) errs.push("Nom requis");
-  if (!reg.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(reg.email)) errs.push("E-mail invalide");
-  if (!reg.phone.trim() || !/^[\d\s+().,-]{7,20}$/.test(reg.phone)) errs.push("Numéro de téléphone invalide");
-  if (!reg.address.trim()) errs.push("Adresse postale requise");
-  const pe = validatePassword(reg.password); if (pe.length) errs.push("Mot de passe : "+pe.join(", "));
-  if (reg.password !== reg.confirm) errs.push("Les mots de passe ne correspondent pas");
-  if (errs.length) { setRegErrors(errs); return; }
-  try {
-    await register({
-      firstName: reg.firstName,
-      lastName: reg.lastName,
-      email: reg.email,
-      phone: reg.phone,
-      address: reg.address,
-      password: reg.password
-    });
+  function handleRegister(e: React.FormEvent) {
+    e.preventDefault();
+    const errs: string[] = [];
+    if (!reg.firstName.trim()) errs.push("Prénom requis");
+    if (!reg.lastName.trim()) errs.push("Nom requis");
+    if (!reg.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(reg.email)) errs.push("E-mail invalide");
+    if (!reg.phone.trim() || !/^[\d\s+().,-]{7,20}$/.test(reg.phone)) errs.push("Numéro de téléphone invalide");
+    if (!reg.address.trim()) errs.push("Adresse postale requise");
+    const pe = validatePassword(reg.password); if (pe.length) errs.push("Mot de passe : "+pe.join(", "));
+    if (reg.password !== reg.confirm) errs.push("Les mots de passe ne correspondent pas");
+    if (allUsers().find(u => u.email.toLowerCase()===reg.email.toLowerCase())) errs.push("E-mail déjà utilisé");
+    if (errs.length) { setRegErrors(errs); return; }
+    const stored: RegisteredUser[] = JSON.parse(sessionStorage.getItem("vg_users")||"[]");
+    sessionStorage.setItem("vg_users", JSON.stringify([...stored, { id:uid(), ...reg, role:"utilisateur" as Role }]));
     setRegOk(true);
-  } catch (err: any) {
-    setRegErrors([err.message || "Erreur lors de la création du compte"]);
   }
-}
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center" role="dialog" aria-modal="true" aria-label="Connexion ou création de compte">
@@ -390,7 +377,7 @@ function CartDrawer({ cart, onClose, onInc, onDec }: { cart:CartItem[]; onClose:
         <div className="flex items-center justify-between px-6 py-5 border-b border-border flex-shrink-0"><h2 className="text-xl font-semibold" style={{fontFamily:"'Playfair Display',serif"}}>Votre panier</h2><button onClick={onClose} aria-label="Fermer le panier" className="text-muted-foreground hover:text-foreground"><X size={20} aria-hidden="true"/></button></div>
         {cart.length===0 ? <div className="flex-1 flex flex-col items-center justify-center gap-3 text-muted-foreground px-6"><ShoppingCart size={40} strokeWidth={1} aria-hidden="true"/><p className="text-sm">Votre panier est vide.</p></div> : (
           <>
-            <ul className="flex-1 overflow-y-auto divide-y divide-border px-6" aria-label="Articles dans le panier">{cart.map(({menu,qty})=><li key={menu.id} className="py-4 flex items-start gap-4"><img src={(menu.images?.[0] || 'https://images.unsplash.com/photo-1688437307658-23a1039d9634?w=800&h=560&fit=crop&auto=format')} alt="" className="w-14 h-14 object-cover flex-shrink-0 bg-muted" aria-hidden="true"/><div className="flex-1 min-w-0"><p className="font-medium text-sm" style={{fontFamily:"'Playfair Display',serif"}}>{menu.title}</p><p className="text-xs text-muted-foreground mt-0.5">{fmt(menu.price)} · {menu.minPeople} pers. min</p><div className="flex items-center gap-2 mt-2" role="group" aria-label={`Quantité pour ${menu.title}`}><button onClick={()=>onDec(menu.id)} aria-label="Retirer un exemplaire" className="w-6 h-6 border border-border flex items-center justify-center hover:bg-secondary"><Minus size={12} aria-hidden="true"/></button><span className="text-sm w-4 text-center" aria-live="polite">{qty}</span><button onClick={()=>onInc(menu.id)} aria-label="Ajouter un exemplaire" className="w-6 h-6 border border-border flex items-center justify-center hover:bg-secondary"><Plus size={12} aria-hidden="true"/></button></div></div><p className="text-sm font-semibold text-primary flex-shrink-0" style={{fontFamily:"'Playfair Display',serif"}}>{fmt(menu.price*qty)}</p></li>)}</ul>
+            <ul className="flex-1 overflow-y-auto divide-y divide-border px-6" aria-label="Articles dans le panier">{cart.map(({menu,qty})=><li key={menu.id} className="py-4 flex items-start gap-4"><img src={(menu.images?.[0] || 'https://images.unsplash.com/photo-1688437307658-23a1039d9634?w=800&h=560&fit=crop&auto=format')} alt="" className="w-14 h-14 object-cover flex-shrink-0 bg-muted" aria-hidden="true"/><div className="flex-1 min-w-0"><p className="font-medium text-sm" style={{fontFamily:"'Playfair Display',serif"}}>{menu.title}</p><p className="text-xs text-muted-foreground mt-0.5">{fmt(menu.price)} · {(menu.minPeople || menu.min_people || 4)} pers. min</p><div className="flex items-center gap-2 mt-2" role="group" aria-label={`Quantité pour ${menu.title}`}><button onClick={()=>onDec(menu.id)} aria-label="Retirer un exemplaire" className="w-6 h-6 border border-border flex items-center justify-center hover:bg-secondary"><Minus size={12} aria-hidden="true"/></button><span className="text-sm w-4 text-center" aria-live="polite">{qty}</span><button onClick={()=>onInc(menu.id)} aria-label="Ajouter un exemplaire" className="w-6 h-6 border border-border flex items-center justify-center hover:bg-secondary"><Plus size={12} aria-hidden="true"/></button></div></div><p className="text-sm font-semibold text-primary flex-shrink-0" style={{fontFamily:"'Playfair Display',serif"}}>{fmt(menu.price*qty)}</p></li>)}</ul>
             <div className="px-6 py-5 border-t border-border space-y-4 flex-shrink-0"><div className="flex justify-between text-base font-semibold" style={{fontFamily:"'Playfair Display',serif"}}><span>Total</span><span className="text-primary" aria-live="polite">{fmt(total)}</span></div>{done?<div role="status" className="text-center py-3 bg-secondary text-sm"><Check size={16} className="inline mr-2 text-accent" aria-hidden="true"/>Demande reçue — nous vous recontactons sous 24 h.</div>:<button onClick={()=>setDone(true)} className="w-full py-3 bg-primary text-primary-foreground text-sm tracking-wide hover:opacity-90">Confirmer</button>}</div>
           </>
         )}
@@ -562,8 +549,8 @@ function MenuDetailView({ menu, dishes, user, onBack, onOrder, onAuth }: { menu:
         <div className="space-y-6">
           <div><h1 className="text-3xl md:text-4xl font-semibold leading-tight" style={{fontFamily:"'Playfair Display',serif"}}>{menu.title}</h1><p className="text-muted-foreground mt-3 leading-relaxed">{menu.description}</p></div>
           <div className="grid grid-cols-2 gap-4 py-5 border-y border-border">
-            <div><p className="text-xs uppercase tracking-widest text-muted-foreground mb-1">Prix</p><p className="text-3xl font-semibold text-primary" style={{fontFamily:"'Playfair Display',serif"}}>{fmt(menu.price)}</p><p className="text-xs text-muted-foreground">pour {menu.minPeople} personnes</p></div>
-            <div><p className="text-xs uppercase tracking-widest text-muted-foreground mb-1">Minimum</p><p className="text-3xl font-semibold" style={{fontFamily:"'Playfair Display',serif"}}>{menu.minPeople}</p><p className="text-xs text-muted-foreground">personnes</p></div>
+            <div><p className="text-xs uppercase tracking-widest text-muted-foreground mb-1">Prix</p><p className="text-3xl font-semibold text-primary" style={{fontFamily:"'Playfair Display',serif"}}>{fmt(menu.price)}</p><p className="text-xs text-muted-foreground">pour {(menu.minPeople || menu.min_people || 4)} personnes</p></div>
+            <div><p className="text-xs uppercase tracking-widest text-muted-foreground mb-1">Minimum</p><p className="text-3xl font-semibold" style={{fontFamily:"'Playfair Display',serif"}}>{(menu.minPeople || menu.min_people || 4)}</p><p className="text-xs text-muted-foreground">personnes</p></div>
           </div>
           {(["entrée","plat","dessert"] as DishType[]).map(type=>{ const items=byType(type); if(!items.length) return null; return <section key={type} aria-label={`${type}s`}><p className="text-xs tracking-widest uppercase text-muted-foreground pb-2 border-b border-border mb-3">{type.charAt(0).toUpperCase()+type.slice(1)}{items.length>1?"s":""}</p><ul className="space-y-3">{items.map(d=><li key={d.id}><p className="font-medium text-sm" style={{fontFamily:"'Playfair Display',serif"}}>{d.name}</p>{d.allergens.length>0 && <div className="flex items-center gap-1.5 mt-1 flex-wrap"><AlertTriangle size={10} className="text-amber-500 flex-shrink-0" aria-hidden="true"/><span className="sr-only">Allergènes : </span>{d.allergens.map(a=><span key={a} className="text-[10px] px-1.5 py-0.5 bg-amber-50 border border-amber-200 text-amber-800">{a}</span>)}</div>}</li>)}</ul></section>; })}
           <div className="border-2 border-primary bg-primary/5 p-5 space-y-2" role="note" aria-label="Conditions importantes">
@@ -571,7 +558,7 @@ function MenuDetailView({ menu, dishes, user, onBack, onOrder, onAuth }: { menu:
             <p className="text-sm leading-relaxed text-foreground">{menu.conditions}</p>
             <p className="text-[11px] text-muted-foreground border-t border-primary/20 pt-2 mt-2">En passant commande, vous confirmez avoir pris connaissance et accepté ces conditions ainsi que nos CGV.</p>
           </div>
-          <div className="bg-secondary border border-border p-3 text-xs text-muted-foreground flex items-start gap-2"><Info size={12} className="flex-shrink-0 mt-0.5" aria-hidden="true"/>Remise de 10 % appliquée automatiquement pour tout groupe de {menu.minPeople+5} personnes ou plus.</div>
+          <div className="bg-secondary border border-border p-3 text-xs text-muted-foreground flex items-start gap-2"><Info size={12} className="flex-shrink-0 mt-0.5" aria-hidden="true"/>Remise de 10 % appliquée automatiquement pour tout groupe de {(menu.minPeople || menu.min_people || 4)+5} personnes ou plus.</div>
           {menu.stock===0 ? <div className="w-full py-3.5 bg-muted text-muted-foreground text-sm text-center" role="status">Ce menu est épuisé</div>
           : user ? <button onClick={onOrder} className="w-full py-3.5 bg-primary text-primary-foreground text-sm tracking-wide hover:opacity-90 flex items-center justify-center gap-2"><ShoppingCart size={16} aria-hidden="true"/>Commander ce menu</button>
           : <div className="space-y-3"><div className="bg-secondary border border-border p-4 text-sm text-center" role="note"><Lock size={14} className="inline mr-2 text-muted-foreground" aria-hidden="true"/>Vous devez être connecté pour passer commande.</div><div className="grid grid-cols-2 gap-3"><button onClick={onAuth} className="py-2.5 bg-primary text-primary-foreground text-sm hover:opacity-90">Se connecter</button><button onClick={onAuth} className="py-2.5 border border-primary text-primary text-sm hover:bg-primary hover:text-primary-foreground transition-colors">Créer un compte</button></div></div>}
@@ -587,29 +574,33 @@ function OrderView({ menu, user, onBack, onConfirm }: { menu:MenuData; user:Auth
   const [step, setStep] = useState(1);
   const np=user.name.split(" ");
   const [s1,setS1]=useState({ firstName:np[0]||"",lastName:np.slice(1).join(" ")||"",email:user.email,phone:user.phone||"",eventDate:"",deliveryTime:"12:00",address:user.address?.split(",")[0]?.trim()||"",city:"Bordeaux",inBordeaux:true,distanceKm:"0",notes:"" });
-  const [people,setPeople]=useState(menu.minPeople);
+  const [people,setPeople]=useState((menu.minPeople || menu.min_people || 4));
   const [agreed,setAgreed]=useState(false);
   const [confirmed,setConfirmed]=useState(false);
-  const menuSub=+((menu.price/menu.minPeople)*people).toFixed(2);
-  const discount=+(calcDiscount(menuSub,menu.minPeople,people)).toFixed(2);
+  const menuSub=+((menu.price/(menu.minPeople || menu.min_people || 4))*people).toFixed(2);
+  const discount=+(calcDiscount(menuSub,(menu.minPeople || menu.min_people || 4),people)).toFixed(2);
   const delivFee=+(calcDeliveryFee(s1.inBordeaux,+s1.distanceKm||0)).toFixed(2);
   const total=+(menuSub-discount+delivFee).toFixed(2);
-  const hasDiscount=people>=menu.minPeople+5;
+  const hasDiscount=people>=(menu.minPeople || menu.min_people || 4)+5;
   const ic="bg-input-background border border-border px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring";
   const steps=["Livraison","Menu & personnes","Récapitulatif"];
 
   const minDate = useMemo(() => {
     const d = new Date();
-    d.setDate(d.getDate() + menu.minOrderDays + 3);
+    d.setDate(d.getDate() + (menu.minOrderDays || 5) + 3);
     return d.toISOString().split("T")[0];
   }, [menu.minOrderDays]);
 
   const tooFar = !s1.inBordeaux && +s1.distanceKm >= 50;
 
-  function handleConfirm(e:React.FormEvent){
+  async function handleConfirm(e:React.FormEvent){
     e.preventDefault(); if(!agreed)return;
-    const order:Order={ id:uid(),userEmail:user.email,menuId:menu.id,menuTitle:menu.title,menuImage:(menu.images?.[0] || 'https://images.unsplash.com/photo-1688437307658-23a1039d9634?w=800&h=560&fit=crop&auto=format'),menuMinPeople:menu.minPeople,firstName:s1.firstName,lastName:s1.lastName,email:s1.email,phone:s1.phone,eventDate:s1.eventDate,deliveryTime:s1.deliveryTime,address:s1.address,city:s1.city,inBordeaux:s1.inBordeaux,distanceKm:+s1.distanceKm||0,people,menuSubtotal:menuSub,deliveryFee:delivFee,discount,total,notes:s1.notes,statusHistory:[{status:"en attente",at:new Date().toISOString()}],currentStatus:"en attente" };
-    onConfirm(order); setConfirmed(true);
+    const order:Order={ id:uid(),userEmail:user.email,menuId:menu.id,menuTitle:menu.title,menuImage:(menu.images?.[0] || 'https://images.unsplash.com/photo-1688437307658-23a1039d9634?w=800&h=560&fit=crop&auto=format'),menuMinPeople:(menu.minPeople || menu.min_people || 4),firstName:s1.firstName,lastName:s1.lastName,email:s1.email,phone:s1.phone,eventDate:s1.eventDate,deliveryTime:s1.deliveryTime,address:s1.address,city:s1.city,inBordeaux:s1.inBordeaux,distanceKm:+s1.distanceKm||0,people,menuSubtotal:menuSub,deliveryFee:delivFee,discount,total,notes:s1.notes,statusHistory:[{status:"en attente",at:new Date().toISOString()}],currentStatus:"en attente" };
+    try {
+      await createOrder({ menuId:menu.id,firstName:s1.firstName,lastName:s1.lastName,email:s1.email,phone:s1.phone,eventDate:s1.eventDate,deliveryTime:s1.deliveryTime,address:s1.address,city:s1.city,inBordeaux:s1.inBordeaux,distanceKm:+s1.distanceKm||0,people,menuSubtotal:menuSub,deliveryFee:delivFee,discount,total,notes:s1.notes });
+    } catch(err) { console.error(err); }
+    onConfirm(order);
+    setConfirmed(true);
   }
 
   if(confirmed) return (
@@ -658,8 +649,8 @@ function OrderView({ menu, user, onBack, onConfirm }: { menu:MenuData; user:Auth
       {step===2 && (
         <div className="space-y-6">
           <h2 className="text-lg font-semibold" style={{fontFamily:"'Playfair Display',serif"}}>Votre menu &amp; nombre de personnes</h2>
-          <div className="bg-card border border-border p-5 flex gap-4"><img src={(menu.images?.[0] || 'https://images.unsplash.com/photo-1688437307658-23a1039d9634?w=800&h=560&fit=crop&auto=format')} alt="" className="w-20 h-20 object-cover flex-shrink-0 bg-muted" aria-hidden="true"/><div><p className="text-xs tracking-widest uppercase text-muted-foreground mb-1">Menu sélectionné</p><h3 className="font-semibold text-lg" style={{fontFamily:"'Playfair Display',serif"}}>{menu.title}</h3><p className="text-sm text-muted-foreground mt-1">{fmt(menu.price)} pour {menu.minPeople} personnes</p></div></div>
-          <div className="flex flex-col gap-2"><label className="text-xs tracking-widest uppercase text-muted-foreground" id="people-label">Nombre de personnes *</label><div className="flex items-center gap-4" role="group" aria-labelledby="people-label"><button type="button" onClick={()=>setPeople(p=>Math.max(menu.minPeople,p-1))} aria-label="Retirer une personne" className="w-10 h-10 border border-border flex items-center justify-center hover:bg-secondary"><Minus size={16} aria-hidden="true"/></button><span className="text-3xl font-semibold w-12 text-center" aria-live="polite" aria-atomic="true" style={{fontFamily:"'Playfair Display',serif"}}>{people}</span><button type="button" onClick={()=>setPeople(p=>p+1)} aria-label="Ajouter une personne" className="w-10 h-10 border border-border flex items-center justify-center hover:bg-secondary"><Plus size={16} aria-hidden="true"/></button></div><p className="text-xs text-muted-foreground">Minimum : {menu.minPeople} personnes</p>{hasDiscount&&<p className="text-sm text-emerald-700 font-medium flex items-center gap-1.5" role="status"><CircleCheck size={14} aria-hidden="true"/>Remise de 10 % appliquée !</p>}</div>
+          <div className="bg-card border border-border p-5 flex gap-4"><img src={(menu.images?.[0] || 'https://images.unsplash.com/photo-1688437307658-23a1039d9634?w=800&h=560&fit=crop&auto=format')} alt="" className="w-20 h-20 object-cover flex-shrink-0 bg-muted" aria-hidden="true"/><div><p className="text-xs tracking-widest uppercase text-muted-foreground mb-1">Menu sélectionné</p><h3 className="font-semibold text-lg" style={{fontFamily:"'Playfair Display',serif"}}>{menu.title}</h3><p className="text-sm text-muted-foreground mt-1">{fmt(menu.price)} pour {(menu.minPeople || menu.min_people || 4)} personnes</p></div></div>
+          <div className="flex flex-col gap-2"><label className="text-xs tracking-widest uppercase text-muted-foreground" id="people-label">Nombre de personnes *</label><div className="flex items-center gap-4" role="group" aria-labelledby="people-label"><button type="button" onClick={()=>setPeople(p=>Math.max((menu.minPeople || menu.min_people || 4),p-1))} aria-label="Retirer une personne" className="w-10 h-10 border border-border flex items-center justify-center hover:bg-secondary"><Minus size={16} aria-hidden="true"/></button><span className="text-3xl font-semibold w-12 text-center" aria-live="polite" aria-atomic="true" style={{fontFamily:"'Playfair Display',serif"}}>{people}</span><button type="button" onClick={()=>setPeople(p=>p+1)} aria-label="Ajouter une personne" className="w-10 h-10 border border-border flex items-center justify-center hover:bg-secondary"><Plus size={16} aria-hidden="true"/></button></div><p className="text-xs text-muted-foreground">Minimum : {(menu.minPeople || menu.min_people || 4)} personnes</p>{hasDiscount&&<p className="text-sm text-emerald-700 font-medium flex items-center gap-1.5" role="status"><CircleCheck size={14} aria-hidden="true"/>Remise de 10 % appliquée !</p>}</div>
           <div className="bg-secondary border border-border p-5 space-y-2" aria-live="polite" aria-atomic="true">
             <p className="text-xs tracking-widest uppercase text-muted-foreground mb-3">Estimation en temps réel</p>
             <div className="flex justify-between text-sm"><span className="text-muted-foreground">Menu × {people} personnes</span><span>{fmt(menuSub)}</span></div>
