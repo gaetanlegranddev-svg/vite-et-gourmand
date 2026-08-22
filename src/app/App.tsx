@@ -15,6 +15,7 @@ import {
 } from "recharts";
 import { getMenus, getDishes } from '../services/menuService.js';
 import { useAuth } from '../context/AuthContext.jsx';
+import { login, register } from '../services/authService.js';
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 type View = "home" | "menus" | "menu-detail" | "admin" | "contact" | "order" | "user-space";
@@ -263,31 +264,45 @@ function AuthModal({ onClose, onLogin, initialTab="login" }: { onClose:()=>void;
   const trapRef = useFocusTrap(true);
   const ic = "w-full bg-input-background border border-border px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring";
 
-  function handleLogin(e: React.FormEvent) {
-    e.preventDefault();
-    const disabled = getDisabledEmails();
-    const found = allUsers().find(u => u.email.toLowerCase()===email.toLowerCase() && u.password===pw);
-    if (!found) { setLoginErr("Identifiants incorrects."); return; }
-    if (disabled.includes(found.email)) { setLoginErr("Ce compte a été désactivé. Contactez l'administrateur."); return; }
-    onLogin({ name:`${found.firstName} ${found.lastName}`, email:found.email, role:found.role, address:found.address, phone:found.phone });
+  async function handleLogin(e: React.FormEvent) {
+  e.preventDefault();
+  try {
+    const data = await login(email, pw);
+    onLogin({ 
+      name: `${data.user.firstName} ${data.user.lastName}`, 
+      email: data.user.email, 
+      role: data.user.role 
+    });
     onClose();
+  } catch (err: any) {
+    setLoginErr(err.message || "Identifiants incorrects.");
   }
-  function handleRegister(e: React.FormEvent) {
-    e.preventDefault();
-    const errs: string[] = [];
-    if (!reg.firstName.trim()) errs.push("Prénom requis");
-    if (!reg.lastName.trim()) errs.push("Nom requis");
-    if (!reg.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(reg.email)) errs.push("E-mail invalide");
-    if (!reg.phone.trim() || !/^[\d\s+().,-]{7,20}$/.test(reg.phone)) errs.push("Numéro de téléphone invalide");
-    if (!reg.address.trim()) errs.push("Adresse postale requise");
-    const pe = validatePassword(reg.password); if (pe.length) errs.push("Mot de passe : "+pe.join(", "));
-    if (reg.password !== reg.confirm) errs.push("Les mots de passe ne correspondent pas");
-    if (allUsers().find(u => u.email.toLowerCase()===reg.email.toLowerCase())) errs.push("E-mail déjà utilisé");
-    if (errs.length) { setRegErrors(errs); return; }
-    const stored: RegisteredUser[] = JSON.parse(sessionStorage.getItem("vg_users")||"[]");
-    sessionStorage.setItem("vg_users", JSON.stringify([...stored, { id:uid(), ...reg, role:"utilisateur" as Role }]));
+}
+  async function handleRegister(e: React.FormEvent) {
+  e.preventDefault();
+  const errs: string[] = [];
+  if (!reg.firstName.trim()) errs.push("Prénom requis");
+  if (!reg.lastName.trim()) errs.push("Nom requis");
+  if (!reg.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(reg.email)) errs.push("E-mail invalide");
+  if (!reg.phone.trim() || !/^[\d\s+().,-]{7,20}$/.test(reg.phone)) errs.push("Numéro de téléphone invalide");
+  if (!reg.address.trim()) errs.push("Adresse postale requise");
+  const pe = validatePassword(reg.password); if (pe.length) errs.push("Mot de passe : "+pe.join(", "));
+  if (reg.password !== reg.confirm) errs.push("Les mots de passe ne correspondent pas");
+  if (errs.length) { setRegErrors(errs); return; }
+  try {
+    await register({
+      firstName: reg.firstName,
+      lastName: reg.lastName,
+      email: reg.email,
+      phone: reg.phone,
+      address: reg.address,
+      password: reg.password
+    });
     setRegOk(true);
+  } catch (err: any) {
+    setRegErrors([err.message || "Erreur lors de la création du compte"]);
   }
+}
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center" role="dialog" aria-modal="true" aria-label="Connexion ou création de compte">
