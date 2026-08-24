@@ -265,15 +265,22 @@ function AuthModal({ onClose, onLogin, initialTab="login" }: { onClose:()=>void;
   const trapRef = useFocusTrap(true);
   const ic = "w-full bg-input-background border border-border px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring";
 
-  function handleLogin(e: React.FormEvent) {
-    e.preventDefault();
-    const disabled = getDisabledEmails();
-    const found = allUsers().find(u => u.email.toLowerCase()===email.toLowerCase() && u.password===pw);
-    if (!found) { setLoginErr("Identifiants incorrects."); return; }
-    if (disabled.includes(found.email)) { setLoginErr("Ce compte a été désactivé. Contactez l'administrateur."); return; }
-    onLogin({ name:`${found.firstName} ${found.lastName}`, email:found.email, role:found.role, address:found.address, phone:found.phone });
+  async function handleLogin(e: React.FormEvent) {
+  e.preventDefault();
+  try {
+    const data = await login(email, pw);
+    onLogin({ 
+      name: `${data.user.firstName} ${data.user.lastName}`, 
+      email: data.user.email, 
+      role: data.user.role,
+      address: data.user.address,
+      phone: data.user.phone
+    });
     onClose();
+  } catch (err: any) {
+    setLoginErr(err.message || "Identifiants incorrects.");
   }
+}
   function handleRegister(e: React.FormEvent) {
     e.preventDefault();
     const errs: string[] = [];

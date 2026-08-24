@@ -1,32 +1,33 @@
-// ============================================
-// Vite & Gourmand — Contrôleur : Commandes
+﻿// ============================================
+// Vite & Gourmand ÔÇö Contr├┤leur : Commandes
 // ============================================
 import { pool } from '../config/db.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import StatusHistory from '../models/StatusHistory.js';
 import { sendMail } from '../utils/mailer.js';
+import { orderConfirmationEmail } from '../utils/emailTemplates.js';
 
 const STATUSES = [
   'en attente',
-  'accepté',
-  'en préparation',
+  'accept├®',
+  'en pr├®paration',
   'en cours de livraison',
-  'livré',
-  'en attente du retour de matériel',
-  'terminée',
-  'annulée',
+  'livr├®',
+  'en attente du retour de mat├®riel',
+  'termin├®e',
+  'annul├®e',
 ];
 
-// Écrit une entrée dans MongoDB sans jamais faire échouer la requête PostgreSQL
+// ├ëcrit une entr├®e dans MongoDB sans jamais faire ├®chouer la requ├¬te PostgreSQL
 async function logStatus(orderId, status, note) {
   try {
     await StatusHistory.create({ order_id: orderId, status, at: new Date(), note });
   } catch (err) {
-    console.error('⚠️ Historique de statut non enregistré :', err.message);
+    console.error('ÔÜá´©Å Historique de statut non enregistr├® :', err.message);
   }
 }
 
-// POST /api/orders — utilisateur connecté
+// POST /api/orders ÔÇö utilisateur connect├®
 export const createOrder = asyncHandler(async (req, res) => {
   const {
     menuId, firstName, lastName, email, phone, eventDate, deliveryTime,
@@ -56,18 +57,16 @@ export const createOrder = asyncHandler(async (req, res) => {
   );
 
   const order = rows[0];
-  await logStatus(order.id, order.current_status, 'Commande créée');
+  await logStatus(order.id, order.current_status, 'Commande cr├®├®e');
 
-  sendMail({
+  await sendMail({
     to: email,
-    subject: 'Confirmation de votre commande — Vite & Gourmand',
-    text: `Bonjour ${firstName}, votre commande du ${eventDate} a bien été enregistrée. Total : ${total} €.`,
+    ...orderConfirmationEmail({ firstName, menuTitle: rows[0].menu_id, eventDate, deliveryTime, address, city, people, total })
   });
-
   res.status(201).json({ order });
 });
 
-// GET /api/orders/me — commandes de l'utilisateur connecté
+// GET /api/orders/me ÔÇö commandes de l'utilisateur connect├®
 export const getMyOrders = asyncHandler(async (req, res) => {
   const { rows } = await pool.query(
     'SELECT * FROM orders WHERE user_id = $1 ORDER BY created_at DESC',
@@ -76,7 +75,7 @@ export const getMyOrders = asyncHandler(async (req, res) => {
   res.json({ orders: rows });
 });
 
-// GET /api/orders — admin / employee, avec filtre optionnel ?status=
+// GET /api/orders ÔÇö admin / employee, avec filtre optionnel ?status=
 export const getAllOrders = asyncHandler(async (req, res) => {
   const { status } = req.query;
   const conditions = [];
@@ -93,7 +92,7 @@ export const getAllOrders = asyncHandler(async (req, res) => {
   res.json({ orders: rows });
 });
 
-// GET /api/orders/:id — propriétaire ou staff
+// GET /api/orders/:id ÔÇö propri├®taire ou staff
 export const getOrderById = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { rows } = await pool.query('SELECT * FROM orders WHERE id = $1', [id]);
@@ -105,13 +104,13 @@ export const getOrderById = asyncHandler(async (req, res) => {
   const isOwner = order.user_id === req.user.id;
   const isStaff = ['admin', 'employee'].includes(req.user.role);
   if (!isOwner && !isStaff) {
-    return res.status(403).json({ message: 'Accès refusé.' });
+    return res.status(403).json({ message: 'Acc├¿s refus├®.' });
   }
 
   res.json({ order });
 });
 
-// PATCH /api/orders/:id/status — admin / employee
+// PATCH /api/orders/:id/status ÔÇö admin / employee
 export const updateOrderStatus = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { status, note } = req.body;
@@ -133,14 +132,14 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
 
   sendMail({
     to: order.email,
-    subject: 'Mise à jour de votre commande — Vite & Gourmand',
-    text: `Bonjour ${order.first_name}, le statut de votre commande est désormais : ${status}.`,
+    subject: 'Mise ├á jour de votre commande ÔÇö Vite & Gourmand',
+    text: `Bonjour ${order.first_name}, le statut de votre commande est d├®sormais : ${status}.`,
   });
 
   res.json({ order });
 });
 
-// PATCH /api/orders/:id/cancel — propriétaire ou staff
+// PATCH /api/orders/:id/cancel ÔÇö propri├®taire ou staff
 export const cancelOrder = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { reason, contactMode } = req.body;
@@ -154,22 +153,22 @@ export const cancelOrder = asyncHandler(async (req, res) => {
   const isOwner = order.user_id === req.user.id;
   const isStaff = ['admin', 'employee'].includes(req.user.role);
   if (!isOwner && !isStaff) {
-    return res.status(403).json({ message: 'Accès refusé.' });
+    return res.status(403).json({ message: 'Acc├¿s refus├®.' });
   }
 
   const { rows } = await pool.query(
     `UPDATE orders
-     SET current_status = 'annulée', cancellation_reason = $1, cancellation_contact_mode = $2
+     SET current_status = 'annul├®e', cancellation_reason = $1, cancellation_contact_mode = $2
      WHERE id = $3
      RETURNING *`,
     [reason || null, contactMode || null, id]
   );
 
-  await logStatus(id, 'annulée', reason);
+  await logStatus(id, 'annul├®e', reason);
   res.json({ order: rows[0] });
 });
 
-// POST /api/orders/:id/review — propriétaire, commande terminée uniquement
+// POST /api/orders/:id/review ÔÇö propri├®taire, commande termin├®e uniquement
 export const addReview = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { rating, comment } = req.body;
@@ -184,10 +183,10 @@ export const addReview = asyncHandler(async (req, res) => {
     return res.status(404).json({ message: 'Commande introuvable.' });
   }
   if (order.user_id !== req.user.id) {
-    return res.status(403).json({ message: 'Accès refusé.' });
+    return res.status(403).json({ message: 'Acc├¿s refus├®.' });
   }
-  if (order.current_status !== 'terminée') {
-    return res.status(400).json({ message: 'La commande doit être terminée pour laisser un avis.' });
+  if (order.current_status !== 'termin├®e') {
+    return res.status(400).json({ message: 'La commande doit ├¬tre termin├®e pour laisser un avis.' });
   }
 
   const { rows } = await pool.query(
@@ -201,7 +200,7 @@ export const addReview = asyncHandler(async (req, res) => {
   res.status(201).json({ review: rows[0] });
 });
 
-// GET /api/orders/:id/history — historique des statuts (MongoDB)
+// GET /api/orders/:id/history ÔÇö historique des statuts (MongoDB)
 export const getOrderStatusHistory = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const history = await StatusHistory.find({ order_id: id }).sort({ at: 1 });

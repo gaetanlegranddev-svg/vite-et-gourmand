@@ -4,6 +4,8 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { pool } from '../config/db.js';
+import { sendMail } from '../utils/mailer.js';
+import { welcomeEmail } from '../utils/emailTemplates.js';
 
 // ── Register ─────────────────────────────────
 export const register = async (req, res) => {
@@ -21,6 +23,11 @@ export const register = async (req, res) => {
        VALUES ($1, $2, $3, $4, $5, $6, 'utilisateur') RETURNING id, email, role`,
       [firstName, lastName, email, phone, address, hash]
     );
+    // Envoyer email de bienvenue
+await sendMail({
+  to: email,
+  ...welcomeEmail(firstName)
+});
     res.status(201).json({ message: 'Account created successfully', user: result.rows[0] });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
@@ -43,10 +50,10 @@ export const login = async (req, res) => {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
     const token = jwt.sign(
-      { id: user.id, email: user.email, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: '24h' }
-    );
+  { id: user.id, email: user.email, role: user.role },
+  process.env.JWT_SECRET || 'viteGourmand2026SecretJWT!',
+  { expiresIn: '24h' }
+);
     res.json({
       message: 'Login successful',
       token,
