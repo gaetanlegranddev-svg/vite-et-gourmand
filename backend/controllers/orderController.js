@@ -48,7 +48,7 @@ export const createOrder = asyncHandler(async (req, res) => {
        address, city, in_bordeaux, distance_km, people, menu_subtotal, delivery_fee,
        discount, total, notes, has_equipment_loan)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
-     RETURNING *`,
+     RETURNING *, (SELECT title FROM menus WHERE id = menu_id) as menu_title`,
     [
       req.user.id, menuId, firstName, lastName, email, phone, eventDate, deliveryTime,
       address, city, inBordeaux ?? true, distanceKm || 0, people, menuSubtotal,
@@ -61,7 +61,7 @@ export const createOrder = asyncHandler(async (req, res) => {
 
   await sendMail({
     to: email,
-    ...orderConfirmationEmail({ firstName, menuTitle: rows[0].menu_id, eventDate, deliveryTime, address, city, people, total })
+    ...orderConfirmationEmail({ firstName, menuTitle: rows[0].menu_title || rows[0].menu_id, eventDate, deliveryTime, address, city, people, total })
   });
   res.status(201).json({ order });
 });
