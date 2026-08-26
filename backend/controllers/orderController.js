@@ -41,6 +41,8 @@ export const createOrder = asyncHandler(async (req, res) => {
   ) {
     return res.status(400).json({ message: 'Champs obligatoires manquants.' });
   }
+const menuResult = await pool.query('SELECT title FROM menus WHERE id = $1', [menuId]);
+const menuTitle = menuResult.rows[0]?.title || 'Menu';
 
   const { rows } = await pool.query(
     `INSERT INTO orders
@@ -61,7 +63,7 @@ export const createOrder = asyncHandler(async (req, res) => {
 
   await sendMail({
     to: email,
-    ...orderConfirmationEmail({ firstName, menuTitle: rows[0].menu_title || rows[0].menu_id, eventDate, deliveryTime, address, city, people, total })
+   ...orderConfirmationEmail({ firstName, menuTitle, eventDate, deliveryTime, address, city, people, total })
   });
   res.status(201).json({ order });
 });
