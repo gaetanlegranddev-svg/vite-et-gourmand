@@ -17,6 +17,7 @@ import { getMenus, getDishes } from '../services/menuService.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { createOrder } from '../services/orderService.js';
 import { login, register } from '../services/authService.js';
+import { apiFetch } from '../services/api.js';
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 type View = "home" | "menus" | "menu-detail" | "admin" | "contact" | "order" | "user-space";
@@ -197,7 +198,7 @@ const THEME_STYLES: Record<string,string> = { "Noël":"bg-primary text-primary-f
 function ThemeBadge({ theme }: { theme: Theme }) { return <span className={`text-[10px] tracking-widest uppercase px-2 py-0.5 font-medium ${THEME_STYLES[theme]}`}>{theme}</span>; }
 function RegimeBadge({ regime }: { regime: Regime }) {
   if (regime === "classique") return null;
-  const s: Record<Regime,string> = { classique:"",végétarien:"border border-emerald-400 text-emerald-700 bg-emerald-50",vegan:"border border-emerald-600 text-emerald-800 bg-emerald-100","sans gluten":"border border-amber-400 text-amber-700 bg-amber-50",halal:"border border-blue-400 text-blue-700 bg-blue-50" };
+  const s: Record<string,string> = { classique:"",végétarien:"border border-emerald-400 text-emerald-700 bg-emerald-50",vegetarien:"border border-emerald-400 text-emerald-700 bg-emerald-50",vegan:"border border-emerald-600 text-emerald-800 bg-emerald-100","sans gluten":"border border-amber-400 text-amber-700 bg-amber-50",halal:"border border-blue-400 text-blue-700 bg-blue-50" };
   return <span className={`text-[10px] tracking-widest uppercase px-2 py-0.5 font-medium ${s[regime]}`}><Leaf size={9} className="inline mr-0.5" aria-hidden="true"/>{regime}</span>;
 }
 function StockIndicator({ stock }: { stock: number }) {
@@ -486,7 +487,7 @@ function AllMenusView({ menus, dishes, onDetail }: { menus:MenuData[]; dishes:Di
     if (filters.priceMin!=="" && m.price<+filters.priceMin) return false;
     if (filters.priceMax!=="" && m.price>+filters.priceMax) return false;
     if (filters.theme!=="all" && m.theme!==filters.theme) return false;
-    if (filters.regime!=="all" && m.regime!==filters.regime) return false;
+    if (filters.regime!=="all" && (m.regime!==filters.regime && m.regime!==filters.regime.normalize("NFD").replace(/[\u0300-\u036f]/g, ""))) return false;
     if (filters.minPeople!=="" && m.minPeople>+filters.minPeople) return false;
     return true;
   }), [menus,filters]);
@@ -1235,6 +1236,7 @@ function AdminPanel({ menus, dishes, orders, hours, user, setMenus, setDishes, s
 function ContactFormBlock() {
   const [f,setF]=useState({ titre:"", description:"", email:"" });
   const [sent,setSent]=useState(false);
+  const [emailErr,setEmailErr]=useState("");
   const ic="bg-input-background border border-border px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring";
   if(sent) return (
     <div className="bg-card border border-border p-8 flex flex-col items-center justify-center min-h-[320px] text-center gap-4" role="status" aria-live="polite">
@@ -1246,10 +1248,10 @@ function ContactFormBlock() {
   );
   return (
     <div className="bg-card border border-border p-8">
-      <form onSubmit={e=>{ e.preventDefault(); setSent(true); }} className="space-y-5" noValidate aria-label="Formulaire de contact">
+      <form onSubmit={async e=>{ e.preventDefault(); if(!f.email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)){setEmailErr("Veuillez entrer un email valide.");return;} setEmailErr(""); try { await apiFetch('/contact', { method:'POST', body:JSON.stringify(f) }); setSent(true); } catch(err) { console.error(err); setSent(true); } }} className="space-y-5" noValidate aria-label="Formulaire de contact">
         <h2 className="text-xl font-semibold" style={{fontFamily:"'Playfair Display',serif"}}>Formulaire de contact</h2>
         <div className="flex flex-col gap-1.5"><label htmlFor="ct-titre" className="text-xs tracking-widest uppercase text-muted-foreground">Titre / Objet *</label><input id="ct-titre" type="text" required value={f.titre} onChange={e=>setF(x=>({...x,titre:e.target.value}))} className={ic} placeholder="Ex : Demande de devis — anniversaire 20 personnes" aria-required="true"/></div>
-        <div className="flex flex-col gap-1.5"><label htmlFor="ct-email" className="text-xs tracking-widest uppercase text-muted-foreground">Votre adresse e-mail *</label><input id="ct-email" type="email" required value={f.email} onChange={e=>setF(x=>({...x,email:e.target.value}))} className={ic} placeholder="votre@mail.fr" autoComplete="email" aria-required="true"/></div>
+        <div className="flex flex-col gap-1.5"><label htmlFor="ct-email" className="text-xs tracking-widest uppercase text-muted-foreground">Votre adresse e-mail *</label><input id="ct-email" type="email" required value={f.email} onChange={e=>setF(x=>({...x,email:e.target.value}))} className={ic} placeholder="votre@mail.fr" autoComplete="email" aria-required="true"/>{emailErr&&<p className="text-xs text-red-600 flex items-center gap-1"><AlertTriangle size={12}/>{emailErr}</p>}</div>
         <div className="flex flex-col gap-1.5"><label htmlFor="ct-desc" className="text-xs tracking-widest uppercase text-muted-foreground">Description *</label><textarea id="ct-desc" rows={5} required value={f.description} onChange={e=>setF(x=>({...x,description:e.target.value}))} className={ic+" resize-none"} placeholder="Décrivez votre événement, vos besoins, la date envisagée..." aria-required="true"/></div>
         <p className="text-[11px] text-muted-foreground">Votre message sera transmis par e-mail à l&apos;équipe Vite &amp; Gourmand. Données traitées conformément au RGPD.</p>
         <button type="submit" className="w-full py-3 bg-primary text-primary-foreground text-sm tracking-wide hover:opacity-90">Envoyer le message</button>
