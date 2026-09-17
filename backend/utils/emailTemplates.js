@@ -8,7 +8,7 @@ export const welcomeEmail = (firstName) => ({
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
       <div style="background-color: #7A1C1C; padding: 20px; text-align: center;">
         <h1 style="color: white; margin: 0;">Vite & Gourmand</h1>
-        <p style="color: #f0d0d0; margin: 5px 0;">Traiteur à Bordeaux depuis 1999</p>
+        <p style="color: #f0d0d0; margin: 5px 0;">Traiteur à Bordeaux depuis 2001</p>
       </div>
       <div style="padding: 30px; background-color: #f9f9f9;">
         <h2>Bonjour ${firstName} ! 👋</h2>
@@ -40,7 +40,7 @@ export const orderConfirmationEmail = (order) => ({
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
       <div style="background-color: #7A1C1C; padding: 20px; text-align: center;">
         <h1 style="color: white; margin: 0;">Vite & Gourmand</h1>
-        <p style="color: #f0d0d0; margin: 5px 0;">Traiteur à Bordeaux depuis 1999</p>
+        <p style="color: #f0d0d0; margin: 5px 0;">Traiteur à Bordeaux depuis 2001</p>
       </div>
       <div style="padding: 30px; background-color: #f9f9f9;">
         <h2>Commande confirmée ! ✅</h2>
