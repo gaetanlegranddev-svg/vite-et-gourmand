@@ -1,0 +1,67 @@
+// ============================================
+// Vite & Gourmand — Helper Functions
+// ============================================
+
+export type OrderStatus =
+  | "en attente" | "accepté" | "en préparation"
+  | "en cours de livraison" | "livré"
+  | "en attente du retour de matériel" | "terminée" | "annulée";
+
+export interface StatusEntry { status: OrderStatus; at: string }
+
+export const fmt = (p: number) => Number(p).toFixed(2).replace(".", ",") + " €";
+
+export const fmtDate = (d: string) => new Date(d).toLocaleDateString("fr-FR", { day:"2-digit", month:"long", year:"numeric" });
+
+export const fmtDateShort = (d: string) => new Date(d).toLocaleDateString("fr-FR", { day:"2-digit", month:"2-digit", year:"2-digit" });
+
+export function calcDeliveryFee(inBordeaux: boolean, km: number) { 
+  return inBordeaux ? 0 : 5 + 0.59 * km; 
+}
+
+export function calcDiscount(sub: number, minP: number, people: number) { 
+  return people >= minP + 5 ? sub * 0.1 : 0; 
+}
+
+export function validatePassword(pw: string): string[] {
+  const e: string[] = [];
+  if (pw.length < 10) e.push("10 caractères minimum");
+  if (!/[A-Z]/.test(pw)) e.push("une majuscule");
+  if (!/[a-z]/.test(pw)) e.push("une minuscule");
+  if (!/[0-9]/.test(pw)) e.push("un chiffre");
+  if (!/[^A-Za-z0-9]/.test(pw)) e.push("un caractère spécial");
+  return e;
+}
+
+export const STATUS_SEQUENCE: OrderStatus[] = [
+  "en attente","accepté","en préparation","en cours de livraison",
+  "livré","en attente du retour de matériel","terminée"
+];
+
+export const STATUS_LABELS: Record<OrderStatus,string> = {
+  "en attente":"En attente","accepté":"Accepté","en préparation":"En préparation",
+  "en cours de livraison":"En cours de livraison","livré":"Livré",
+  "en attente du retour de matériel":"En attente du retour de matériel",
+  "terminée":"Terminée","annulée":"Annulée",
+};
+
+export const STATUS_COLORS: Record<OrderStatus,string> = {
+  "en attente":"bg-amber-100 text-amber-700 border-amber-300",
+  "accepté":"bg-blue-100 text-blue-700 border-blue-300",
+  "en préparation":"bg-violet-100 text-violet-700 border-violet-300",
+  "en cours de livraison":"bg-orange-100 text-orange-700 border-orange-300",
+  "livré":"bg-teal-100 text-teal-700 border-teal-300",
+  "en attente du retour de matériel":"bg-rose-100 text-rose-700 border-rose-300",
+  "terminée":"bg-emerald-100 text-emerald-700 border-emerald-300",
+  "annulée":"bg-red-100 text-red-600 border-red-300",
+};
+
+export const CHART_COLORS = ["#7A1C1C","#B8832A","#4A7C59","#3B6FA0","#8B5E3C","#5B3A7E"];
+
+export function nextStatus(current: OrderStatus, hasEquipment: boolean): OrderStatus | null {
+  const idx = STATUS_SEQUENCE.indexOf(current);
+  if (idx === -1 || current === "annulée") return null;
+  if (current === "livré") return hasEquipment ? "en attente du retour de matériel" : "terminée";
+  if (current === "en attente du retour de matériel") return "terminée";
+  return STATUS_SEQUENCE[idx + 1] || null;
+}

@@ -31,6 +31,7 @@ import OrderView from '../components/OrderView.tsx';
 import UserSpaceView from '../components/UserSpace.tsx';
 import AdminPanel from '../components/AdminPanel.tsx';
 import StatsTab from '../components/StatsTab.tsx';
+import { fmt, fmtDate, fmtDateShort, calcDeliveryFee, calcDiscount, validatePassword, nextStatus, STATUS_SEQUENCE, STATUS_LABELS, STATUS_COLORS, CHART_COLORS } from '../utils/helpers.ts';
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 type View = "home" | "menus" | "menu-detail" | "admin" | "contact" | "order" | "user-space";
@@ -81,24 +82,6 @@ interface Filters { priceMin: string; priceMax: string; theme: Theme|"all"; regi
 const ALLERGENS = ["Gluten","Crustacés","Œufs","Poissons","Arachides","Soja","Lait","Fruits à coque","Céleri","Moutarde","Graines de sésame","Sulfites","Lupin","Mollusques"];
 const THEMES: Theme[] = ["Noël","Pâques","classique","événement"];
 const REGIMES: Regime[] = ["classique","végétarien","vegan","sans gluten","halal"];
-const STATUS_SEQUENCE: OrderStatus[] = ["en attente","accepté","en préparation","en cours de livraison","livré","en attente du retour de matériel","terminée"];
-const STATUS_LABELS: Record<OrderStatus,string> = {
-  "en attente":"En attente","accepté":"Accepté","en préparation":"En préparation",
-  "en cours de livraison":"En cours de livraison","livré":"Livré",
-  "en attente du retour de matériel":"En attente du retour de matériel",
-  "terminée":"Terminée","annulée":"Annulée",
-};
-const STATUS_COLORS: Record<OrderStatus,string> = {
-  "en attente":"bg-amber-100 text-amber-700 border-amber-300",
-  "accepté":"bg-blue-100 text-blue-700 border-blue-300",
-  "en préparation":"bg-violet-100 text-violet-700 border-violet-300",
-  "en cours de livraison":"bg-orange-100 text-orange-700 border-orange-300",
-  "livré":"bg-teal-100 text-teal-700 border-teal-300",
-  "en attente du retour de matériel":"bg-rose-100 text-rose-700 border-rose-300",
-  "terminée":"bg-emerald-100 text-emerald-700 border-emerald-300",
-  "annulée":"bg-red-100 text-red-600 border-red-300",
-};
-const CHART_COLORS = ["#7A1C1C","#B8832A","#4A7C59","#3B6FA0","#8B5E3C","#5B3A7E"];
 const USER_TIMELINE: OrderStatus[] = ["en attente","accepté","en préparation","en cours de livraison","livré","terminée"];
 const DEFAULT_FILTERS: Filters = { priceMin:"", priceMax:"", theme:"all", regime:"all", minPeople:"" };
 
@@ -147,61 +130,6 @@ const INIT_ORDERS: Order[] = [
   { id:"ord5", userEmail:"user@exemple.fr", menuId:"m1", menuTitle:"Formule Noël Prestige", menuImage:"https://images.unsplash.com/photo-1688437307658-23a1039d9634?w=200&h=200&fit=crop&auto=format", menuMinPeople:4, firstName:"Thomas", lastName:"Bernard", email:"thomas@exemple.fr", phone:"0612000001", eventDate:"2026-12-23", deliveryTime:"10:00", address:"7 rue Sainte-Catherine", city:"Bordeaux", inBordeaux:true, distanceKm:0, people:4, menuSubtotal:148, deliveryFee:0, discount:0, total:148, notes:"", statusHistory:mh(["en attente"],"2026-11-20T08:00:00"), currentStatus:"en attente" },
   { id:"ord6", userEmail:"user@exemple.fr", menuId:"m2", menuTitle:"Formule Pâques Printanière", menuImage:"https://images.unsplash.com/photo-1605926637512-c8b131444a4b?w=200&h=200&fit=crop&auto=format", menuMinPeople:4, firstName:"Sophie", lastName:"Leroy", email:"sophie@exemple.fr", phone:"0612000002", eventDate:"2026-04-20", deliveryTime:"13:00", address:"2 place du Parlement", city:"Bordeaux", inBordeaux:true, distanceKm:0, people:6, menuSubtotal:204, deliveryFee:0, discount:0, total:204, notes:"", statusHistory:mh(["en attente","accepté","en préparation","en cours de livraison","livré","terminée"],"2026-04-14T10:00:00"), currentStatus:"terminée", review:{ rating:4, comment:"Menu printanier délicat, l'agneau était fondant.", at:"2026-04-21T09:00:00", validated:true } },
 ];
-
-// ── Helpers ────────────────────────────────────────────────────────────────────
-
-const fmt = (p: number) => Number(p).toFixed(2).replace(".", ",") + " €";
-const uid = () => "x" + Math.random().toString(36).slice(2, 8);
-const fmtDate = (iso: string) => { try { return new Date(iso).toLocaleDateString("fr-FR",{day:"2-digit",month:"long",year:"numeric"}); } catch { return iso; } };
-const fmtDateShort = (iso: string) => { try { return new Date(iso).toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric"}); } catch { return iso; } };
-const fmtTime = (iso: string) => { try { return new Date(iso).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"}); } catch { return iso; } };
-
-function calcDeliveryFee(inBordeaux: boolean, km: number) { return inBordeaux ? 0 : 5 + 0.59 * km; }
-function calcDiscount(sub: number, minP: number, people: number) { return people >= minP + 5 ? sub * 0.1 : 0; }
-function validatePassword(pw: string): string[] {
-  const e: string[] = [];
-  if (pw.length < 10) e.push("10 caractères minimum");
-  if (!/[A-Z]/.test(pw)) e.push("une majuscule");
-  if (!/[a-z]/.test(pw)) e.push("une minuscule");
-  if (!/[0-9]/.test(pw)) e.push("un chiffre");
-  if (!/[^A-Za-z0-9]/.test(pw)) e.push("un caractère spécial");
-  return e;
-}
-
-function getDisabledEmails(): string[] { return JSON.parse(localStorage.getItem("vg_disabled") || "[]"); }
-function setDisabledEmails(list: string[]) { localStorage.setItem("vg_disabled", JSON.stringify(list)); }
-function allUsers(): RegisteredUser[] { return [...SEED_USERS, ...JSON.parse(sessionStorage.getItem("vg_users") || "[]")]; }
-
-function nextStatus(current: OrderStatus, hasEquipment: boolean): OrderStatus | null {
-  const map: Partial<Record<OrderStatus,OrderStatus>> = {
-    "en attente":"accepté","accepté":"en préparation","en préparation":"en cours de livraison","en cours de livraison":"livré",
-    "en attente du retour de matériel":"terminée",
-  };
-  if (current === "livré") return hasEquipment ? "en attente du retour de matériel" : "terminée";
-  return map[current] ?? null;
-}
-
-// ── Cart Drawer ────────────────────────────────────────────────────────────────
-
-function CartDrawer({ cart, onClose, onInc, onDec }: { cart:CartItem[]; onClose:()=>void; onInc:(id:string)=>void; onDec:(id:string)=>void }) {
-  const [done, setDone] = useState(false);
-  const total = cart.reduce((s,c)=>s+c.menu.price*c.qty,0);
-  const trapRef = useFocusTrap(true);
-  return (
-    <div className="fixed inset-0 z-50 flex justify-end" role="dialog" aria-modal="true" aria-label="Votre panier">
-      <div className="absolute inset-0 bg-foreground/30 backdrop-blur-sm" onClick={onClose} aria-hidden="true"/>
-      <aside ref={trapRef} className="relative w-full max-w-md bg-card h-full flex flex-col shadow-2xl">
-        <div className="flex items-center justify-between px-6 py-5 border-b border-border flex-shrink-0"><h2 className="text-xl font-semibold" style={{fontFamily:"'Playfair Display',serif"}}>Votre panier</h2><button onClick={onClose} aria-label="Fermer le panier" className="text-muted-foreground hover:text-foreground"><X size={20} aria-hidden="true"/></button></div>
-        {cart.length===0 ? <div className="flex-1 flex flex-col items-center justify-center gap-3 text-muted-foreground px-6"><ShoppingCart size={40} strokeWidth={1} aria-hidden="true"/><p className="text-sm">Votre panier est vide.</p></div> : (
-          <>
-            <ul className="flex-1 overflow-y-auto divide-y divide-border px-6" aria-label="Articles dans le panier">{cart.map(({menu,qty})=><li key={menu.id} className="py-4 flex items-start gap-4"><img src={(menu.images?.[0] || 'https://images.unsplash.com/photo-1688437307658-23a1039d9634?w=800&h=560&fit=crop&auto=format')} alt="" className="w-14 h-14 object-cover flex-shrink-0 bg-muted" aria-hidden="true"/><div className="flex-1 min-w-0"><p className="font-medium text-sm" style={{fontFamily:"'Playfair Display',serif"}}>{menu.title}</p><p className="text-xs text-muted-foreground mt-0.5">{fmt(menu.price)} · {(menu.minPeople || menu.min_people || 4)} pers. min</p><div className="flex items-center gap-2 mt-2" role="group" aria-label={`Quantité pour ${menu.title}`}><button onClick={()=>onDec(menu.id)} aria-label="Retirer un exemplaire" className="w-6 h-6 border border-border flex items-center justify-center hover:bg-secondary"><Minus size={12} aria-hidden="true"/></button><span className="text-sm w-4 text-center" aria-live="polite">{qty}</span><button onClick={()=>onInc(menu.id)} aria-label="Ajouter un exemplaire" className="w-6 h-6 border border-border flex items-center justify-center hover:bg-secondary"><Plus size={12} aria-hidden="true"/></button></div></div><p className="text-sm font-semibold text-primary flex-shrink-0" style={{fontFamily:"'Playfair Display',serif"}}>{fmt(menu.price*qty)}</p></li>)}</ul>
-            <div className="px-6 py-5 border-t border-border space-y-4 flex-shrink-0"><div className="flex justify-between text-base font-semibold" style={{fontFamily:"'Playfair Display',serif"}}><span>Total</span><span className="text-primary" aria-live="polite">{fmt(total)}</span></div>{done?<div role="status" className="text-center py-3 bg-secondary text-sm"><Check size={16} className="inline mr-2 text-accent" aria-hidden="true"/>Demande reçue — nous vous recontactons sous 24 h.</div>:<button onClick={()=>setDone(true)} className="w-full py-3 bg-primary text-primary-foreground text-sm tracking-wide hover:opacity-90">Confirmer</button>}</div>
-          </>
-        )}
-      </aside>
-    </div>
-  );
-}
 
 // ── Cancel Order Modal ─────────────────────────────────────────────────────────
 
