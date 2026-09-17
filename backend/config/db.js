@@ -14,11 +14,7 @@ export const pool = new Pool({
   port:     Number(process.env.PG_PORT) || 5432,
   database: process.env.PG_DATABASE || "vite_gourmand",
   user:     process.env.PG_USER     || "postgres",
-<<<<<<< HEAD
-  password: process.env.PG_PASSWORD || "Paris.123456*",
-=======
   password: process.env.PG_PASSWORD,
->>>>>>> develop
   client_encoding: 'UTF8',
   ...(isProduction && { ssl: { rejectUnauthorized: false } })
 });
