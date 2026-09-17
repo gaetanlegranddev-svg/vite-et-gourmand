@@ -72,7 +72,18 @@ export function StarRating({ value, onChange, label = "Note" }: { value: number;
   );
 }
 
-export function PasswordStrengthBar({ pw, validatePassword }: { pw: string; validatePassword: (pw: string) => string[] }) {
+function validatePasswordLocal(pw: string): string[] {
+  const e: string[] = [];
+  if (pw.length < 10) e.push("10 caractères minimum");
+  if (!/[A-Z]/.test(pw)) e.push("une majuscule");
+  if (!/[a-z]/.test(pw)) e.push("une minuscule");
+  if (!/[0-9]/.test(pw)) e.push("un chiffre");
+  if (!/[^A-Za-z0-9]/.test(pw)) e.push("un caractère spécial");
+  return e;
+}
+
+export function PasswordStrengthBar({ pw }: { pw: string }) {
+  const validatePassword = validatePasswordLocal;
   if (!pw) return null;
   const s = 5 - validatePassword(pw).length;
   const c = ["","bg-red-500","bg-red-400","bg-amber-400","bg-emerald-400","bg-emerald-500"];
