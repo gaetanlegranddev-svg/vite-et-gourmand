@@ -13,6 +13,7 @@ import { ThemeBadge, RegimeBadge, StockIndicator, StatusBadge } from "./Badges.t
 import { updateOrderStatus, getAllOrders } from "../services/orderService.js";
 import StatsTab from './StatsTab.tsx';
 import CancelOrderModal from './CancelOrderModal.tsx';
+import AdvanceStatusModal from './AdvanceStatusModal.tsx';
 
 const fmt = (p: number) => Number(p).toFixed(2).replace(".", ",") + " €";
 const fmtDate = (d: string) => new Date(d).toLocaleDateString("fr-FR", { day:"2-digit", month:"long", year:"numeric" });

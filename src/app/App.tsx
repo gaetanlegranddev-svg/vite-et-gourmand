@@ -33,6 +33,7 @@ import AdminPanel from '../components/AdminPanel.tsx';
 import StatsTab from '../components/StatsTab.tsx';
 import { fmt, fmtDate, fmtDateShort, calcDeliveryFee, calcDiscount, validatePassword, nextStatus, STATUS_SEQUENCE, STATUS_LABELS, STATUS_COLORS, CHART_COLORS } from '../utils/helpers.ts';
 import CancelOrderModal from '../components/CancelOrderModal.tsx';
+import AdvanceStatusModal from '../components/AdvanceStatusModal.tsx';
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 type View = "home" | "menus" | "menu-detail" | "admin" | "contact" | "order" | "user-space";
@@ -131,43 +132,6 @@ const INIT_ORDERS: Order[] = [
   { id:"ord5", userEmail:"user@exemple.fr", menuId:"m1", menuTitle:"Formule Noël Prestige", menuImage:"https://images.unsplash.com/photo-1688437307658-23a1039d9634?w=200&h=200&fit=crop&auto=format", menuMinPeople:4, firstName:"Thomas", lastName:"Bernard", email:"thomas@exemple.fr", phone:"0612000001", eventDate:"2026-12-23", deliveryTime:"10:00", address:"7 rue Sainte-Catherine", city:"Bordeaux", inBordeaux:true, distanceKm:0, people:4, menuSubtotal:148, deliveryFee:0, discount:0, total:148, notes:"", statusHistory:mh(["en attente"],"2026-11-20T08:00:00"), currentStatus:"en attente" },
   { id:"ord6", userEmail:"user@exemple.fr", menuId:"m2", menuTitle:"Formule Pâques Printanière", menuImage:"https://images.unsplash.com/photo-1605926637512-c8b131444a4b?w=200&h=200&fit=crop&auto=format", menuMinPeople:4, firstName:"Sophie", lastName:"Leroy", email:"sophie@exemple.fr", phone:"0612000002", eventDate:"2026-04-20", deliveryTime:"13:00", address:"2 place du Parlement", city:"Bordeaux", inBordeaux:true, distanceKm:0, people:6, menuSubtotal:204, deliveryFee:0, discount:0, total:204, notes:"", statusHistory:mh(["en attente","accepté","en préparation","en cours de livraison","livré","terminée"],"2026-04-14T10:00:00"), currentStatus:"terminée", review:{ rating:4, comment:"Menu printanier délicat, l'agneau était fondant.", at:"2026-04-21T09:00:00", validated:true } },
 ];
-
-// ── Advance Status Modal ───────────────────────────────────────────────────────
-
-function AdvanceStatusModal({ order, onClose, onConfirm }: { order:Order; onClose:()=>void; onConfirm:(next:OrderStatus,hasEquipment?:boolean)=>void }) {
-  const [equipChoice, setEquipChoice] = useState<"none"|"equipment">("none");
-  const isAfterLivred = order.currentStatus==="livré";
-  const trapRef = useFocusTrap(true);
-  const next = isAfterLivred ? (equipChoice==="equipment"?"en attente du retour de matériel":"terminée") : nextStatus(order.currentStatus,false);
-  if (!next && !isAfterLivred) return null;
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="Avancer le statut de la commande">
-      <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={onClose} aria-hidden="true"/>
-      <div ref={trapRef} className="relative bg-card border border-border w-full max-w-md mx-4 shadow-2xl p-6 space-y-5">
-        <div className="flex items-center justify-between"><h2 className="text-lg font-semibold" style={{fontFamily:"'Playfair Display',serif"}}>Avancer le statut</h2><button onClick={onClose} aria-label="Fermer"><X size={18} aria-hidden="true"/></button></div>
-        <div className="bg-secondary border border-border p-4 text-sm space-y-1">
-          <p className="text-muted-foreground">Commande : <strong className="text-foreground">{order.firstName} {order.lastName}</strong></p>
-          <p className="text-muted-foreground">Statut actuel : <StatusBadge status={order.currentStatus}/></p>
-        </div>
-        {isAfterLivred ? (
-          <fieldset className="space-y-3"><legend className="text-sm text-muted-foreground">Du matériel a-t-il été prêté au client ?</legend>
-            <div className="grid grid-cols-2 gap-3 mt-2">
-              <label className={`flex flex-col items-center gap-2 p-4 border cursor-pointer text-sm transition-colors ${equipChoice==="none"?"border-primary bg-primary/5":"border-border hover:border-primary/30"}`}><input type="radio" name="equip" value="none" checked={equipChoice==="none"} onChange={()=>setEquipChoice("none")} className="sr-only"/><Check size={20} className={equipChoice==="none"?"text-primary":"text-border"} aria-hidden="true"/><span>Sans prêt</span><span className="text-xs text-muted-foreground text-center">→ Terminée</span></label>
-              <label className={`flex flex-col items-center gap-2 p-4 border cursor-pointer text-sm transition-colors ${equipChoice==="equipment"?"border-rose-500 bg-rose-50":"border-border hover:border-rose-300"}`}><input type="radio" name="equip" value="equipment" checked={equipChoice==="equipment"} onChange={()=>setEquipChoice("equipment")} className="sr-only"/><Box size={20} className={equipChoice==="equipment"?"text-rose-600":"text-border"} aria-hidden="true"/><span>Avec prêt</span><span className="text-xs text-muted-foreground text-center">→ Retour matériel</span></label>
-            </div>
-            {equipChoice==="equipment" && <div className="bg-rose-50 border border-rose-200 p-3 text-xs text-rose-800 leading-relaxed" role="note"><strong>Notification automatique :</strong> Le client recevra un e-mail l&apos;informant du délai de <strong>10 jours ouvrés</strong> pour restituer le matériel, faute de quoi <strong>600 € TTC</strong> lui seront facturés (CGV).</div>}
-          </fieldset>
-        ) : (
-          <p className="text-sm text-muted-foreground">Prochain statut : <strong className="text-foreground ml-1"><StatusBadge status={next!}/></strong></p>
-        )}
-        <div className="flex gap-3 pt-1">
-          <button onClick={()=>onConfirm(isAfterLivred?(equipChoice==="equipment"?"en attente du retour de matériel":"terminée"):next!,equipChoice==="equipment")} className="flex-1 py-2.5 bg-primary text-primary-foreground text-sm hover:opacity-90 flex items-center justify-center gap-2"><CR size={14} aria-hidden="true"/>Confirmer l&apos;avancement</button>
-          <button onClick={onClose} className="px-5 py-2.5 border border-border text-sm hover:bg-secondary">Annuler</button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // ── Order Modify Modal ─────────────────────────────────────────────────────────
 
