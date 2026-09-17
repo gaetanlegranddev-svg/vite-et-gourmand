@@ -61,7 +61,7 @@ const menuTitle = menuResult.rows[0]?.title || 'Menu';
   const order = rows[0];
   await logStatus(order.id, order.current_status, 'Commande cr├®├®e');
 
-  await sendMail({
+  sendMail({
     to: email,
    ...orderConfirmationEmail({ firstName, menuTitle, eventDate, deliveryTime, address, city, people, total })
   });
@@ -202,9 +202,21 @@ export const addReview = asyncHandler(async (req, res) => {
   res.status(201).json({ review: rows[0] });
 });
 
-// GET /api/orders/:id/history ÔÇö historique des statuts (MongoDB)
+// GET /api/orders/:id/history — historique des statuts (MongoDB)
 export const getOrderStatusHistory = asyncHandler(async (req, res) => {
   const { id } = req.params;
+
+  // Vérifier que la commande appartient à l'utilisateur (sauf admin/employee)
+  if (req.user.role === 'utilisateur') {
+    const { rows } = await pool.query(
+      'SELECT id FROM orders WHERE id = $1 AND user_id = $2',
+      [id, req.user.id]
+    );
+    if (rows.length === 0) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+  }
+
   const history = await StatusHistory.find({ order_id: id }).sort({ at: 1 });
   res.json({ history });
 });
