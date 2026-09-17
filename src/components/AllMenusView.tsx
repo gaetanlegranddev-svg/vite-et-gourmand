@@ -2,7 +2,7 @@
 // Vite & Gourmand — All Menus View Component
 // ============================================
 import { useState, useMemo } from "react";
-import { SlidersHorizontal, UtensilsCrossed, AlertTriangle } from "lucide-react";
+import { SlidersHorizontal, UtensilsCrossed, AlertTriangle, Package } from "lucide-react";
 import { ThemeBadge, RegimeBadge, StockIndicator } from "./Badges.tsx";
 
 type Theme = "Noël" | "Pâques" | "classique" | "événement";
@@ -29,9 +29,9 @@ export default function AllMenusView({ menus, dishes, onDetail }: { menus:MenuDa
     if (!m.active) return false;
     if (filters.priceMin!=="" && m.price<+filters.priceMin) return false;
     if (filters.priceMax!=="" && m.price>+filters.priceMax) return false;
-    if (filters.theme!=="all" && m.theme!==filters.theme) return false;
+    if (filters.theme!=="all" && (m.theme!==filters.theme && m.theme!==filters.theme.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase())) return false;
     if (filters.regime!=="all" && (m.regime!==filters.regime && m.regime!==filters.regime.normalize("NFD").replace(/[\u0300-\u036f]/g, ""))) return false;
-    if (filters.minPeople!=="" && m.minPeople>+filters.minPeople) return false;
+    if (filters.minPeople!=="" && (m.minPeople||m.min_people||4)>+filters.minPeople) return false;
     return true;
   }), [menus,filters]);
   const activeCount = [filters.priceMin,filters.priceMax,filters.theme!=="all"?"x":"",filters.regime!=="all"?"x":"",filters.minPeople].filter(Boolean).length;
