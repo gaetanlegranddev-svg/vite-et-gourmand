@@ -30,7 +30,7 @@ await sendMail({
 });
     res.status(201).json({ message: 'Account created successfully', user: result.rows[0] });
   } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
@@ -51,7 +51,7 @@ export const login = async (req, res) => {
     }
     const token = jwt.sign(
   { id: user.id, email: user.email, role: user.role },
-  process.env.JWT_SECRET || 'viteGourmand2026SecretJWT!',
+  process.env.JWT_SECRET ,
   { expiresIn: '24h' }
 );
     res.json({
@@ -66,7 +66,7 @@ export const login = async (req, res) => {
       }
     });
   } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
@@ -83,7 +83,7 @@ export const getProfile = async (req, res) => {
     }
     res.json(result.rows[0]);
   } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
@@ -98,6 +98,6 @@ export const updateProfile = async (req, res) => {
     );
     res.json(result.rows[0]);
   } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
+    res.status(500).json({ message: 'Server error' });
   }
 };
