@@ -60,3 +60,13 @@ export function nextStatus(current: OrderStatus, hasEquipment: boolean): OrderSt
   if (current === "livré") return hasEquipment ? "en attente du retour de matériel" : "terminée";
   return map[current] ?? null;
 }
+export function getDisabledEmails(): string[] { return JSON.parse(localStorage.getItem("vg_disabled") || "[]"); }
+export function setDisabledEmails(list: string[]) { localStorage.setItem("vg_disabled", JSON.stringify(list)); }
+export function allUsers(): any[] { 
+  const SEED_USERS = [
+    { id:"1", firstName:"Julie", lastName:"Martin", email:"admin@viteetgourmand.fr", role:"admin" },
+    { id:"2", firstName:"José", lastName:"Fernandez", email:"employe@viteetgourmand.fr", role:"employee" },
+    { id:"3", firstName:"Marie", lastName:"Dupont", email:"user@exemple.fr", role:"utilisateur" }
+  ];
+  return [...SEED_USERS, ...JSON.parse(sessionStorage.getItem("vg_users") || "[]")]; 
+}
