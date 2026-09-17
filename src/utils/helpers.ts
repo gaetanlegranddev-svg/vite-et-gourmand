@@ -10,19 +10,13 @@ export type OrderStatus =
 export interface StatusEntry { status: OrderStatus; at: string }
 
 export const fmt = (p: number) => Number(p).toFixed(2).replace(".", ",") + " €";
+export const uid = () => "x" + Math.random().toString(36).slice(2, 8);
+export const fmtDate = (iso: string) => { try { return new Date(iso).toLocaleDateString("fr-FR",{day:"2-digit",month:"long",year:"numeric"}); } catch { return iso; } };
+export const fmtDateShort = (iso: string) => { try { return new Date(iso).toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric"}); } catch { return iso; } };
+export const fmtTime = (iso: string) => { try { return new Date(iso).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"}); } catch { return iso; } };
 
-export const fmtDate = (d: string) => new Date(d).toLocaleDateString("fr-FR", { day:"2-digit", month:"long", year:"numeric" });
-
-export const fmtDateShort = (d: string) => new Date(d).toLocaleDateString("fr-FR", { day:"2-digit", month:"2-digit", year:"2-digit" });
-
-export function calcDeliveryFee(inBordeaux: boolean, km: number) { 
-  return inBordeaux ? 0 : 5 + 0.59 * km; 
-}
-
-export function calcDiscount(sub: number, minP: number, people: number) { 
-  return people >= minP + 5 ? sub * 0.1 : 0; 
-}
-
+export function calcDeliveryFee(inBordeaux: boolean, km: number) { return inBordeaux ? 0 : 5 + 0.59 * km; }
+export function calcDiscount(sub: number, minP: number, people: number) { return people >= minP + 5 ? sub * 0.1 : 0; }
 export function validatePassword(pw: string): string[] {
   const e: string[] = [];
   if (pw.length < 10) e.push("10 caractères minimum");
@@ -59,9 +53,10 @@ export const STATUS_COLORS: Record<OrderStatus,string> = {
 export const CHART_COLORS = ["#7A1C1C","#B8832A","#4A7C59","#3B6FA0","#8B5E3C","#5B3A7E"];
 
 export function nextStatus(current: OrderStatus, hasEquipment: boolean): OrderStatus | null {
-  const idx = STATUS_SEQUENCE.indexOf(current);
-  if (idx === -1 || current === "annulée") return null;
+  const map: Partial<Record<OrderStatus,OrderStatus>> = {
+    "en attente":"accepté","accepté":"en préparation","en préparation":"en cours de livraison","en cours de livraison":"livré",
+    "en attente du retour de matériel":"terminée",
+  };
   if (current === "livré") return hasEquipment ? "en attente du retour de matériel" : "terminée";
-  if (current === "en attente du retour de matériel") return "terminée";
-  return STATUS_SEQUENCE[idx + 1] || null;
+  return map[current] ?? null;
 }

@@ -1,31 +1,18 @@
-// ============================================
-// Vite & Gourmand — User Space Component
-// ============================================
 import { useState } from "react";
-import { User, Package, LogOut, Edit2, Check, X, AlertTriangle, Clock, ChevronRight as CR, ReceiptText, UserCircle, ClipboardList, Ban, ChevronDown } from "lucide-react";
-import { StatusBadge } from "./Badges.tsx";
+import { User, Package, LogOut, Edit2, Check, X, AlertTriangle, Clock, ChevronRight as CR, ReceiptText, UserCircle, ClipboardList, Ban, ChevronDown, Pencil } from "lucide-react";import { StatusBadge } from "./Badges.tsx";
 import { updateProfile } from "../services/authService.js";
 import { cancelOrder } from "../services/orderService.js";
-
+import { fmt, fmtDate, fmtTime, OrderStatus, STATUS_SEQUENCE, STATUS_LABELS } from "../utils/helpers.ts";
+import OrderModifyModal from './OrderModifyModal.tsx';
 
 type UserTab = "commandes" | "profil";
-type OrderStatus = "en attente" | "accepté" | "en préparation" | "en cours de livraison" | "livré" | "en attente du retour de matériel" | "terminée" | "annulée";
 
 interface AuthUser { name: string; email: string; role: string; phone?: string; address?: string; }
 interface Order { id: string; menuTitle: string; menuImage: string; eventDate: string; people: number; total: number; currentStatus: OrderStatus; statusHistory: any[]; review?: any; [key: string]: any; }
 
-const fmt = (p: number) => Number(p).toFixed(2).replace(".", ",") + " €";
-const fmtDate = (d: string) => new Date(d).toLocaleDateString("fr-FR", { day:"2-digit", month:"long", year:"numeric" });
-
-const STATUS_SEQUENCE: OrderStatus[] = ["en attente","accepté","en préparation","en cours de livraison","livré","en attente du retour de matériel","terminée"];
 const USER_TIMELINE: OrderStatus[] = ["en attente","accepté","en préparation","en cours de livraison","livré","terminée"];
-const STATUS_LABELS: Record<OrderStatus,string> = {
-  "en attente":"En attente","accepté":"Accepté","en préparation":"En préparation",
-  "en cours de livraison":"En cours de livraison","livré":"Livré",
-  "en attente du retour de matériel":"En attente du retour de matériel",
-  "terminée":"Terminée","annulée":"Annulée",
-};
 
+// ── User Space ─────────────────────────────────────────────────────────────────
 // ── User Space ─────────────────────────────────────────────────────────────────
 
 export default function UserSpaceView({ user, orders, setOrders }: { user:AuthUser; orders:Order[]; setOrders:React.Dispatch<React.SetStateAction<Order[]>> }) {
