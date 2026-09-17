@@ -11,6 +11,7 @@ import {
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { ThemeBadge, RegimeBadge, StockIndicator, StatusBadge } from "./Badges.tsx";
 import { updateOrderStatus, getAllOrders } from "../services/orderService.js";
+import StatsTab from './StatsTab.tsx';
 
 const fmt = (p: number) => Number(p).toFixed(2).replace(".", ",") + " €";
 const fmtDate = (d: string) => new Date(d).toLocaleDateString("fr-FR", { day:"2-digit", month:"long", year:"numeric" });
