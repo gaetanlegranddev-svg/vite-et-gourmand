@@ -189,7 +189,7 @@ useEffect(() => {
         <div className="max-w-6xl mx-auto px-6 flex items-center justify-between h-16">
           <button onClick={()=>nav("home")} aria-label="Vite et Gourmand — retour à l'accueil" className="flex flex-col leading-none">
             <span className="text-xl font-bold tracking-tight text-primary" style={{fontFamily:"'Playfair Display',serif"}}>Vite &amp; Gourmand</span>
-            <span className="text-[10px] tracking-widest uppercase text-muted-foreground hidden sm:block" aria-hidden="true">Traiteur — Bordeaux depuis 1999</span>
+            <span className="text-[10px] tracking-widest uppercase text-muted-foreground hidden sm:block" aria-hidden="true">Traiteur — Bordeaux depuis 2001</span>
           </button>
           <nav className="hidden md:flex items-center gap-7" aria-label="Navigation principale">
             {navLinks.map(l=><button key={l.label} onClick={l.action} className="text-sm text-muted-foreground hover:text-foreground transition-colors">{l.label}</button>)}
@@ -234,7 +234,7 @@ useEffect(() => {
             <section className="py-24 bg-secondary" aria-labelledby="about-heading">
               <div className="max-w-6xl mx-auto px-6 grid md:grid-cols-[1fr_2fr] gap-12 items-center">
                 <div className="aspect-[3/4] bg-muted overflow-hidden"><img src="https://images.unsplash.com/photo-1608835291093-394b0c943a75?w=500&h=700&fit=crop&auto=format" alt="Plat végétarien préparé avec soin par notre équipe" className="w-full h-full object-cover"/></div>
-                <div className="space-y-6"><p className="text-xs tracking-widest uppercase text-accent">Notre histoire</p><h2 id="about-heading" className="text-4xl md:text-5xl font-semibold leading-tight" style={{fontFamily:"'Playfair Display',serif"}}>Deux mains,<br/>une même passion.</h2><div className="space-y-4 text-muted-foreground leading-relaxed max-w-lg"><p>En 1999, <strong className="text-foreground font-medium">Julie</strong> et <strong className="text-foreground font-medium">José</strong> ont ouvert Vite &amp; Gourmand avec une idée simple : que chaque repas de fête mérite d&apos;être exceptionnel.</p><p>Vingt-cinq ans plus tard, leur cuisine reste entièrement artisanale — chaque assiette préparée dans leur atelier bordelais avec des produits de saison locaux.</p></div><blockquote className="flex gap-4 items-center pt-2"><div className="h-px flex-1 bg-border" aria-hidden="true"/><p className="text-sm italic text-muted-foreground" style={{fontFamily:"'Playfair Display',serif"}}>&quot;Cuisiner, c&apos;est donner du plaisir.&quot;</p><div className="h-px flex-1 bg-border" aria-hidden="true"/></blockquote></div>
+                <div className="space-y-6"><p className="text-xs tracking-widest uppercase text-accent">Notre histoire</p><h2 id="about-heading" className="text-4xl md:text-5xl font-semibold leading-tight" style={{fontFamily:"'Playfair Display',serif"}}>Deux mains,<br/>une même passion.</h2><div className="space-y-4 text-muted-foreground leading-relaxed max-w-lg"><p>En 2001, <strong className="text-foreground font-medium">Julie</strong> et <strong className="text-foreground font-medium">José</strong> ont ouvert Vite &amp; Gourmand avec une idée simple : que chaque repas de fête mérite d&apos;être exceptionnel.</p><p>Vingt-cinq ans plus tard, leur cuisine reste entièrement artisanale — chaque assiette préparée dans leur atelier bordelais avec des produits de saison locaux.</p></div><blockquote className="flex gap-4 items-center pt-2"><div className="h-px flex-1 bg-border" aria-hidden="true"/><p className="text-sm italic text-muted-foreground" style={{fontFamily:"'Playfair Display',serif"}}>&quot;Cuisiner, c&apos;est donner du plaisir.&quot;</p><div className="h-px flex-1 bg-border" aria-hidden="true"/></blockquote></div>
               </div>
             </section>
 
@@ -283,7 +283,7 @@ useEffect(() => {
         )}
         {view==="menus"&&<AllMenusView menus={menus} dishes={dishes} onDetail={id=>{ setSelId(id); nav("menu-detail"); }}/>}
         {view==="menu-detail"&&selMenu&&<MenuDetailView menu={selMenu} dishes={dishes} user={user} onBack={()=>nav("menus")} onOrder={()=>{ setOrdMenuId(selMenu.id); nav("order"); }} onAuth={()=>openAuth("login")}/>}
-        {view==="order"&&ordMenu&&user&&<OrderView menu={ordMenu} user={user} onBack={()=>nav("menus")} onConfirm={order=>{ setOrders(p=>[...p,order]); nav("user-space"); }}/>}
+        {view==="order"&&ordMenu&&user&&<OrderView menu={ordMenu} user={user} onBack={()=>nav("menus")} onConfirm={order=>{ setOrders(p=>[...p,order]); getMenus().then(data=>{ if(data.menus&&data.menus.length>0){ const enriched=data.menus.map((apiMenu:any)=>{ const staticMenu=INIT_MENUS.find(m=>m.title===apiMenu.title); return staticMenu?{...staticMenu,...apiMenu}:apiMenu; }); setMenus(enriched); } }); nav("user-space"); }}/>}
         {view==="user-space"&&user&&<UserSpaceView user={user} orders={orders} setOrders={setOrders}/>}
         {view==="admin"&&user&&(user.role==="admin"||user.role==="employee")&&<AdminPanel menus={menus} dishes={dishes} orders={orders} hours={hours} user={user} setMenus={setMenus} setDishes={setDishes} setOrders={setOrders} setHours={setHours}/>}
         {view==="contact"&&(
