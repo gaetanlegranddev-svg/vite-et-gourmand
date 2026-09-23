@@ -15,7 +15,7 @@ import {
 } from "recharts";
 import { getMenus, getDishes } from '../services/menuService.js';
 import { useAuth } from '../context/AuthContext.jsx';
-import { createOrder, getMyOrders } from '../services/orderService.js';
+import { createOrder, getMyOrders, getAllOrders } from '../services/orderService.js';
 import { login, register } from '../services/authService.js';
 import { apiFetch } from '../services/api.js';
 import Footer from '../components/Footer.tsx';
@@ -37,6 +37,7 @@ import AdvanceStatusModal from '../components/AdvanceStatusModal.tsx';
 import OrderModifyModal from '../components/OrderModifyModal.tsx';
 import TeamTab from '../components/TeamTab.tsx';
 import CartDrawer from '../components/CartDrawer.tsx';
+
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 type View = "home" | "menus" | "menu-detail" | "admin" | "contact" | "order" | "user-space";
@@ -301,7 +302,7 @@ useEffect(() => {
       </main>
 
       <Footer hours={hours} onLegal={t=>setLegal(t)}/>
-      {authOpen&&<AuthModal onClose={()=>setAuthOpen(false)} onLogin={u=>{ setUser(u); getMyOrders().then(data=>{ if(data.orders) setOrders(data.orders.map((o:any)=>({ ...o, currentStatus: o.current_status, menuTitle: menus.find((m:any) => m.id === o.menu_id)?.title || o.menu_id, menuImage: menus.find((m:any) => m.id === o.menu_id)?.images?.[0] || 'https://images.unsplash.com/photo-1688437307658-23a1039d9634?w=800&h=560&fit=crop&auto=format', menuMinPeople: 4, firstName: o.first_name, lastName: o.last_name, eventDate: o.event_date, deliveryTime: o.delivery_time, inBordeaux: o.in_bordeaux, distanceKm: o.distance_km, menuSubtotal: o.menu_subtotal, deliveryFee: o.delivery_fee, userEmail: o.email, statusHistory: [{status: o.current_status, at: o.created_at}] }))); }).catch(console.error); }} initialTab={authTab}/>}
+      {authOpen&&<AuthModal onClose={()=>setAuthOpen(false)} onLogin={u=>{ setUser(u); (u.role === 'admin' || u.role === 'employee' ? getAllOrders() : getMyOrders()).then(data=>{ if(data.orders) setOrders(data.orders.map((o:any)=>({ ...o, currentStatus: o.current_status, menuTitle: menus.find((m:any) => m.id === o.menu_id)?.title || o.menu_id, menuImage: menus.find((m:any) => m.id === o.menu_id)?.images?.[0] || 'https://images.unsplash.com/photo-1688437307658-23a1039d9634?w=800&h=560&fit=crop&auto=format', menuMinPeople: 4, firstName: o.first_name, lastName: o.last_name, eventDate: o.event_date, deliveryTime: o.delivery_time, inBordeaux: o.in_bordeaux, distanceKm: o.distance_km, menuSubtotal: o.menu_subtotal, deliveryFee: o.delivery_fee, userEmail: o.email, statusHistory: [{status: o.current_status, at: o.created_at}] }))); }).catch(console.error); }} initialTab={authTab}/>}
       {cartOpen&&<CartDrawer cart={cart} onClose={()=>setCartOpen(false)} onInc={incCart} onDec={decCart}/>}
       {legal&&<LegalModal type={legal} onClose={()=>setLegal(null)}/>}
     </div>
