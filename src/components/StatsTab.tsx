@@ -31,7 +31,7 @@ export default function StatsTab({ menus, orders }: { menus:MenuData[]; orders:O
     if (dateTo && o.eventDate>dateTo) return false;
     return true;
   });
-  const totalCA = revenueOrders.reduce((s,o)=>s+o.total,0);
+  const totalCA = revenueOrders.reduce((s,o)=>s+(parseFloat(o.total)||0),0);
 
   const revenueData = menus.map(m=>{
     const mOrders = revenueOrders.filter(o=>o.menuId===m.id);

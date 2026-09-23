@@ -6,6 +6,7 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import StatusHistory from '../models/StatusHistory.js';
 import { sendMail } from '../utils/mailer.js';
 import { orderConfirmationEmail, orderNotificationEmail, orderCompletedEmail, equipmentReturnEmail, orderStatusEmail } from '../utils/emailTemplates.js';
+import Statistic from '../models/Statistic.js';
 
 const STATUSES = [
   'en attente',
@@ -24,6 +25,25 @@ async function logStatus(orderId, status, note) {
     await StatusHistory.create({ order_id: orderId, status, at: new Date(), note });
   } catch (err) {
     console.error('ÔÜá´©Å Historique de statut non enregistr├® :', err.message);
+  }
+}
+async function logStatistic(menuId, menuTitle, total) {
+  try {
+    const existing = await Statistic.findOne({ menu_id: menuId });
+    if (existing) {
+      existing.total_orders += 1;
+      existing.total_revenue += Number(total);
+      await existing.save();
+    } else {
+      await Statistic.create({ 
+        menu_id: menuId, 
+        menu_title: menuTitle, 
+        total_orders: 1, 
+        total_revenue: Number(total) 
+      });
+    }
+  } catch (err) {
+    console.error('Statistique non enregistrée :', err.message);
   }
 }
 
@@ -60,6 +80,11 @@ const menuTitle = menuResult.rows[0]?.title || 'Menu';
 
   const order = rows[0];
   await logStatus(order.id, order.current_status, 'Commande cr├®├®e');
+  console.log('logStatistic appelé avec:', menuId, menuTitle, total);
+await logStatistic(menuId, menuTitle, total);
+console.log('Stat enregistrée pour', menuTitle);
+  await logStatistic(menuId, menuTitle, total);
+console.log('Stat enregistrée pour', menuTitle);
 
  sendMail({
     to: email,
