@@ -5,7 +5,7 @@ import { pool } from '../config/db.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import StatusHistory from '../models/StatusHistory.js';
 import { sendMail } from '../utils/mailer.js';
-import { orderConfirmationEmail } from '../utils/emailTemplates.js';
+import { orderConfirmationEmail, orderNotificationEmail } from '../utils/emailTemplates.js';
 
 const STATUSES = [
   'en attente',
@@ -61,9 +61,13 @@ const menuTitle = menuResult.rows[0]?.title || 'Menu';
   const order = rows[0];
   await logStatus(order.id, order.current_status, 'Commande cr├®├®e');
 
-  sendMail({
+ sendMail({
     to: email,
    ...orderConfirmationEmail({ firstName, menuTitle, eventDate, deliveryTime, address, city, people, total })
+  });
+  sendMail({
+    to: process.env.EMAIL_USER || 'gaetan.legrand.dev@gmail.com',
+    ...orderNotificationEmail({ firstName, lastName, phone, email, menuTitle, eventDate, deliveryTime, address, city, people, total })
   });
     await pool.query(
     'UPDATE menus SET stock = GREATEST(stock - 1, 0) WHERE id = $1',
