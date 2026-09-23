@@ -65,6 +65,10 @@ const menuTitle = menuResult.rows[0]?.title || 'Menu';
     to: email,
    ...orderConfirmationEmail({ firstName, menuTitle, eventDate, deliveryTime, address, city, people, total })
   });
+    await pool.query(
+    'UPDATE menus SET stock = GREATEST(stock - 1, 0) WHERE id = $1',
+    [menuId]
+  );
   res.status(201).json({ order });
 });
 
