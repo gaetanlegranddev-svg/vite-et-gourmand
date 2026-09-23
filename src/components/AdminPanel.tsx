@@ -68,8 +68,15 @@ export default function AdminPanel({ menus, dishes, orders, hours, user, setMenu
 
   function smenu(){ if(!mf.title.trim())return; if(nm)setMenus(p=>[...p,{...mf,id:uid()}]); else if(em)setMenus(p=>p.map(m=>m.id===em.id?{...mf,id:m.id}:m)); setNm(false); setEm(null); }
   function sdish(){ if(!df.name.trim())return; if(nd)setDishes(p=>[...p,{...df,id:uid()}]); else if(ed)setDishes(p=>p.map(d=>d.id===ed.id?{...df,id:d.id}:d)); setNd(false); setEd(null); }
-  function handleAdvance(order:Order,next:OrderStatus,hasEquip?:boolean){ setOrders(p=>p.map(o=>o.id!==order.id?o:{...o,currentStatus:next,hasEquipmentLoan:hasEquip??o.hasEquipmentLoan,statusHistory:[...o.statusHistory,{status:next,at:new Date().toISOString()}]})); setAdvanceTarget(null); }
-  function handleCancel(order:Order,cm:string,reason:string){ setOrders(p=>p.map(o=>o.id!==order.id?o:{...o,currentStatus:"annulée",cancellationContactMode:cm,cancellationReason:reason,statusHistory:[...o.statusHistory,{status:"annulée",at:new Date().toISOString()}]})); setCancelTarget(null); }
+async function handleAdvance(order: Order, next: OrderStatus, hasEquip?: boolean) {
+  try {
+    await updateOrderStatus(order.id, next, hasEquip);
+    setOrders(p=>p.map(o=>o.id!==order.id?o:{...o,currentStatus:next,hasEquipmentLoan:hasEquip??o.hasEquipmentLoan,statusHistory:[...o.statusHistory,{status:next,at:new Date().toISOString()}]}));
+  } catch(err) {
+    console.error('Erreur mise à jour statut:', err);
+  }
+  setAdvanceTarget(null);
+}  function handleCancel(order:Order,cm:string,reason:string){ setOrders(p=>p.map(o=>o.id!==order.id?o:{...o,currentStatus:"annulée",cancellationContactMode:cm,cancellationReason:reason,statusHistory:[...o.statusHistory,{status:"annulée",at:new Date().toISOString()}]})); setCancelTarget(null); }
   function handleReview(orderId:string,validated:boolean){ setOrders(p=>p.map(o=>o.id!==orderId||!o.review?o:{...o,review:{...o.review!,validated}})); }
 
   const pendingReviews=orders.filter(o=>o.review&&o.review.validated===undefined).length;

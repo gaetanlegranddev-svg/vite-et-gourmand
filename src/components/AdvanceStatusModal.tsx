@@ -2,7 +2,7 @@
 // Vite & Gourmand — Advance Status Modal
 // ============================================
 import { useState } from "react";
-import { X, Truck, Package, ChevronRight as CR } from "lucide-react";
+import { X, Truck, Package, ChevronRight as CR, Check, Box } from "lucide-react";
 import { useFocusTrap } from "../hooks/useFocusTrap.ts";
 import { StatusBadge } from "./Badges.tsx";
 import { OrderStatus, STATUS_SEQUENCE, nextStatus } from "../utils/helpers.ts";

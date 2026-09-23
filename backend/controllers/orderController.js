@@ -10,13 +10,13 @@ import Statistic from '../models/Statistic.js';
 
 const STATUSES = [
   'en attente',
-  'accept├®',
-  'en pr├®paration',
+  'accepte',
+  'en preparation',
   'en cours de livraison',
-  'livr├®',
-  'en attente du retour de mat├®riel',
-  'termin├®e',
-  'annul├®e',
+  'livre',
+  'en attente du retour de materiel',
+  'terminee',
+  'annulee',
 ];
 
 // ├ëcrit une entr├®e dans MongoDB sans jamais faire ├®chouer la requ├¬te PostgreSQL
@@ -83,8 +83,6 @@ const menuTitle = menuResult.rows[0]?.title || 'Menu';
   console.log('logStatistic appelé avec:', menuId, menuTitle, total);
 await logStatistic(menuId, menuTitle, total);
 console.log('Stat enregistrée pour', menuTitle);
-  await logStatistic(menuId, menuTitle, total);
-console.log('Stat enregistrée pour', menuTitle);
 
  sendMail({
     to: email,
@@ -127,93 +125,42 @@ export const getAllOrders = asyncHandler(async (req, res) => {
   res.json({ orders: rows });
 });
 
-// GET /api/orders/:id ÔÇö propri├®taire ou staff
-export const getOrderById = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-  const { rows } = await pool.query('SELECT * FROM orders WHERE id = $1', [id]);
-  const order = rows[0];
-  if (!order) {
-    return res.status(404).json({ message: 'Commande introuvable.' });
-  }
 
-  const isOwner = order.user_id === req.user.id;
-  const isStaff = ['admin', 'employee'].includes(req.user.role);
-  if (!isOwner && !isStaff) {
-    return res.status(403).json({ message: 'Acc├¿s refus├®.' });
-  }
-
-  res.json({ order });
-});
-
-// PATCH /api/orders/:id/status ÔÇö admin / employee
+// PATCH /api/orders/:id/status — admin / employee
 export const updateOrderStatus = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { status, note } = req.body;
 
-  if (!STATUSES.includes(status)) {
+  const normalize = (s) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const validStatus = STATUSES.find(s => normalize(s) === normalize(status));
+  
+  if (!validStatus) {
     return res.status(400).json({ message: 'Statut invalide.' });
   }
 
   const { rows } = await pool.query(
     'UPDATE orders SET current_status = $1 WHERE id = $2 RETURNING *',
-    [status, id]
+    [validStatus, id]
   );
   if (rows.length === 0) {
     return res.status(404).json({ message: 'Commande introuvable.' });
   }
 
   const order = rows[0];
-  await logStatus(order.id, status, note);
+  await logStatus(order.id, validStatus, note);
+  const menuRes = await pool.query('SELECT title FROM menus WHERE id = $1', [order.menu_id]);
+  const menuTitle = menuRes.rows[0]?.title || order.menu_id;
 
-  if (status === 'terminée') {
-    sendMail({
-      to: order.email,
-      ...orderCompletedEmail({ firstName: order.first_name, menuTitle: order.menu_id })
-    });
-  } else if (status === 'en attente du retour de matériel') {
-    sendMail({
-      to: order.email,
-      ...equipmentReturnEmail({ firstName: order.first_name, menuTitle: order.menu_id })
-    });
+  if (validStatus === 'terminee') {
+    sendMail({ to: order.email, ...orderCompletedEmail({ firstName: order.first_name, menuTitle }) });
+  } else if (validStatus === 'en attente du retour de materiel') {
+    sendMail({ to: order.email, ...equipmentReturnEmail({ firstName: order.first_name, menuTitle }) });
   } else {
-    sendMail({
-      to: order.email,
-      ...orderStatusEmail({ firstName: order.first_name, menuTitle: order.menu_id }, status)
-    });
+    sendMail({ to: order.email, ...orderStatusEmail({ firstName: order.first_name, menuTitle }, status) });
   }
 
   res.json({ order });
 });
-
-// PATCH /api/orders/:id/cancel ÔÇö propri├®taire ou staff
-export const cancelOrder = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-  const { reason, contactMode } = req.body;
-
-  const { rows: existing } = await pool.query('SELECT * FROM orders WHERE id = $1', [id]);
-  const order = existing[0];
-  if (!order) {
-    return res.status(404).json({ message: 'Commande introuvable.' });
-  }
-
-  const isOwner = order.user_id === req.user.id;
-  const isStaff = ['admin', 'employee'].includes(req.user.role);
-  if (!isOwner && !isStaff) {
-    return res.status(403).json({ message: 'Acc├¿s refus├®.' });
-  }
-
-  const { rows } = await pool.query(
-    `UPDATE orders
-     SET current_status = 'annul├®e', cancellation_reason = $1, cancellation_contact_mode = $2
-     WHERE id = $3
-     RETURNING *`,
-    [reason || null, contactMode || null, id]
-  );
-
-  await logStatus(id, 'annul├®e', reason);
-  res.json({ order: rows[0] });
-});
-
 // POST /api/orders/:id/review ÔÇö propri├®taire, commande termin├®e uniquement
 export const addReview = asyncHandler(async (req, res) => {
   const { id } = req.params;
@@ -263,4 +210,47 @@ export const getOrderStatusHistory = asyncHandler(async (req, res) => {
 
   const history = await StatusHistory.find({ order_id: id }).sort({ at: 1 });
   res.json({ history });
+});
+// PATCH /api/orders/:id/cancel — propriétaire ou staff
+export const cancelOrder = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { reason, contactMode } = req.body;
+
+  const { rows: existing } = await pool.query('SELECT * FROM orders WHERE id = $1', [id]);
+  const order = existing[0];
+  if (!order) {
+    return res.status(404).json({ message: 'Commande introuvable.' });
+  }
+
+  const isOwner = order.user_id === req.user.id;
+  const isStaff = ['admin', 'employee'].includes(req.user.role);
+  if (!isOwner && !isStaff) {
+    return res.status(403).json({ message: 'Accès refusé.' });
+  }
+
+  const { rows } = await pool.query(
+    `UPDATE orders
+     SET current_status = 'annulee', cancellation_reason = $1, cancellation_contact_mode = $2
+     WHERE id = $3
+     RETURNING *`,
+    [reason || null, contactMode || null, id]
+  );
+
+  await logStatus(id, 'annulee', reason);
+  res.json({ order: rows[0] });
+});
+// GET /api/orders/:id — propriétaire ou staff
+export const getOrderById = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { rows } = await pool.query('SELECT * FROM orders WHERE id = $1', [id]);
+  if (rows.length === 0) {
+    return res.status(404).json({ message: 'Commande introuvable.' });
+  }
+  const order = rows[0];
+  const isOwner = order.user_id === req.user.id;
+  const isStaff = ['admin', 'employee'].includes(req.user.role);
+  if (!isOwner && !isStaff) {
+    return res.status(403).json({ message: 'Accès refusé.' });
+  }
+  res.json({ order });
 });
