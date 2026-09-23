@@ -5,7 +5,7 @@ import { pool } from '../config/db.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import StatusHistory from '../models/StatusHistory.js';
 import { sendMail } from '../utils/mailer.js';
-import { orderConfirmationEmail, orderNotificationEmail } from '../utils/emailTemplates.js';
+import { orderConfirmationEmail, orderNotificationEmail, orderCompletedEmail, equipmentReturnEmail, orderStatusEmail } from '../utils/emailTemplates.js';
 
 const STATUSES = [
   'en attente',
@@ -140,11 +140,22 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
   const order = rows[0];
   await logStatus(order.id, status, note);
 
-  sendMail({
-    to: order.email,
-    subject: 'Mise ├á jour de votre commande ÔÇö Vite & Gourmand',
-    text: `Bonjour ${order.first_name}, le statut de votre commande est d├®sormais : ${status}.`,
-  });
+  if (status === 'terminée') {
+    sendMail({
+      to: order.email,
+      ...orderCompletedEmail({ firstName: order.first_name, menuTitle: order.menu_id })
+    });
+  } else if (status === 'en attente du retour de matériel') {
+    sendMail({
+      to: order.email,
+      ...equipmentReturnEmail({ firstName: order.first_name, menuTitle: order.menu_id })
+    });
+  } else {
+    sendMail({
+      to: order.email,
+      ...orderStatusEmail({ firstName: order.first_name, menuTitle: order.menu_id }, status)
+    });
+  }
 
   res.json({ order });
 });

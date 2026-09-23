@@ -2,9 +2,9 @@
 // Vite & Gourmand — Team Tab Component
 // ============================================
 import { useState } from "react";
-import { Users, ShieldCheck, ShieldOff, Plus, X, Check, AlertTriangle, Eye, EyeOff } from "lucide-react";
-import { validatePassword, getDisabledEmails, setDisabledEmails, allUsers } from "../utils/helpers.ts";
+import { Users, ShieldCheck, ShieldOff, Plus, X, Check, AlertTriangle, Eye, EyeOff, CircleCheck } from "lucide-react";import { validatePassword, getDisabledEmails, setDisabledEmails, allUsers } from "../utils/helpers.ts";
 import { PasswordStrengthBar } from "./Badges.tsx";
+import { apiFetch } from "../services/api.js";
 
 
 interface AuthUser { name: string; email: string; role: string; }
@@ -29,21 +29,34 @@ export default function TeamTab() {
     setDisabledState(next);
   }
 
-  function handleCreate(e: React.FormEvent) {
+  async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     const errs: string[] = [];
     if (!form.firstName.trim()) errs.push("Prénom requis");
     if (!form.lastName.trim()) errs.push("Nom requis");
     if (!form.email.trim()||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) errs.push("E-mail invalide");
     const pe = validatePassword(form.password); if (pe.length) errs.push("Mot de passe : "+pe.join(", "));
-    if (allUsers().find(u=>u.email.toLowerCase()===form.email.toLowerCase())) errs.push("E-mail déjà utilisé");
     if (errs.length) { setErrors(errs); return; }
-    const stored: RegisteredUser[] = JSON.parse(sessionStorage.getItem("vg_users")||"[]");
-    sessionStorage.setItem("vg_users", JSON.stringify([...stored, { id:uid(), firstName:form.firstName, lastName:form.lastName, email:form.email, phone:"", address:"", password:form.password, role:"employee" as Role }]));
-    setCreated({ name:`${form.firstName} ${form.lastName}`, email:form.email });
-    setForm({ firstName:"", lastName:"", email:"", password:"" });
-    setErrors([]);
-    setShowCreate(false);
+    try {
+      await apiFetch('/auth/register', {
+        method: 'POST',
+        body: JSON.stringify({
+          firstName: form.firstName,
+          lastName: form.lastName,
+          email: form.email,
+          phone: '',
+          address: '',
+          password: form.password,
+          role: 'employee'
+        })
+      });
+      setCreated({ name:`${form.firstName} ${form.lastName}`, email:form.email });
+      setForm({ firstName:"", lastName:"", email:"", password:"" });
+      setErrors([]);
+      setShowCreate(false);
+    } catch(err: any) {
+      setErrors([err.message || "Erreur lors de la création du compte"]);
+    }
   }
 
   return (

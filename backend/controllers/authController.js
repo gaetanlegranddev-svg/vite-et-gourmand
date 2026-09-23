@@ -5,11 +5,11 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { pool } from '../config/db.js';
 import { sendMail } from '../utils/mailer.js';
-import { welcomeEmail } from '../utils/emailTemplates.js';
+import { welcomeEmail, employeeCreatedEmail } from '../utils/emailTemplates.js';
 
 // ── Register ─────────────────────────────────
 export const register = async (req, res) => {
-  const { firstName, lastName, email, phone, address, password } = req.body;
+  const { firstName, lastName, email, phone, address, password, role } = req.body;
   try {
     const exists = await pool.query(
       'SELECT id FROM users WHERE email = $1', [email]
@@ -20,14 +20,21 @@ export const register = async (req, res) => {
     const hash = await bcrypt.hash(password, 10);
     const result = await pool.query(
       `INSERT INTO users (first_name, last_name, email, phone, address, password, role)
-       VALUES ($1, $2, $3, $4, $5, $6, 'utilisateur') RETURNING id, email, role`,
-      [firstName, lastName, email, phone, address, hash]
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, email, role`,
+      [firstName, lastName, email, phone, address, hash, role || 'utilisateur']
     );
     // Envoyer email de bienvenue
-await sendMail({
-  to: email,
-  ...welcomeEmail(firstName)
-});
+if (role === 'employee') {
+  await sendMail({
+    to: email,
+    ...employeeCreatedEmail(firstName, lastName)
+  });
+} else {
+  await sendMail({
+    to: email,
+    ...welcomeEmail(firstName)
+  });
+}
     res.status(201).json({ message: 'Account created successfully', user: result.rows[0] });
   } catch (err) {
     res.status(500).json({ message: 'Server error' });
