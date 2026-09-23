@@ -36,6 +36,7 @@ import CancelOrderModal from '../components/CancelOrderModal.tsx';
 import AdvanceStatusModal from '../components/AdvanceStatusModal.tsx';
 import OrderModifyModal from '../components/OrderModifyModal.tsx';
 import TeamTab from '../components/TeamTab.tsx';
+import CartDrawer from '../components/CartDrawer.tsx';
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 type View = "home" | "menus" | "menu-detail" | "admin" | "contact" | "order" | "user-space";
