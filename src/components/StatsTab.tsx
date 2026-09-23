@@ -3,7 +3,7 @@
 // ============================================
 import { useState, useMemo } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
-import { TrendingUp, BarChart2, CalendarDays, Star } from "lucide-react";
+import { TrendingUp, BarChart2, CalendarDays, Star, RefreshCw } from "lucide-react";
 
 const fmt = (p: number) => Number(p).toFixed(2).replace(".", ",") + " €";
 const CHART_COLORS = ["#7A1C1C","#B8832A","#4A7C59","#3B6FA0","#8B5E3C","#5B3A7E"];
