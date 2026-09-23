@@ -44,7 +44,7 @@ export default function OrderView({ menu, user, onBack, onConfirm }: { menu:Menu
 
   const minDate = useMemo(() => {
     const d = new Date();
-    d.setDate(d.getDate() + (menu.minOrderDays || 5) + 3);
+    d.setDate(d.getDate() + (menu.minOrderDays || menu.min_order_days || 7));
     return d.toISOString().split("T")[0];
   }, [menu.minOrderDays]);
 
